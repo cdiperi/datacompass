@@ -1,96 +1,54 @@
-import { Layout as AntLayout, Menu } from 'antd'
-import { ClockCircleOutlined, HomeOutlined, SafetyCertificateOutlined, ScheduleOutlined, TableOutlined } from '@ant-design/icons'
-import { Outlet, useNavigate, useLocation } from 'react-router-dom'
+import { Layout as AntLayout } from 'antd'
+import { Outlet, useLocation } from 'react-router-dom'
+import { CollapsibleSidebar } from './CollapsibleSidebar'
 import { SearchBar } from './SearchBar'
+import { useSidebar } from '../hooks/useSidebar'
 
-const { Header, Sider, Content } = AntLayout
+const { Header, Content } = AntLayout
 
-const menuItems = [
-  {
-    key: '/',
-    icon: <HomeOutlined />,
-    label: 'Home',
-  },
-  {
-    key: '/catalog',
-    icon: <TableOutlined />,
-    label: 'Catalog',
-  },
-  {
-    key: '/dq',
-    icon: <SafetyCertificateOutlined />,
-    label: 'Data Quality',
-  },
-  {
-    key: '/deprecation',
-    icon: <ClockCircleOutlined />,
-    label: 'Deprecation',
-  },
-  {
-    key: '/scheduler',
-    icon: <ScheduleOutlined />,
-    label: 'Scheduler',
-  },
-]
+const COLLAPSED_WIDTH = 60
+const EXPANDED_WIDTH = 220
 
 export function Layout() {
-  const navigate = useNavigate()
+  const { collapsed } = useSidebar()
   const location = useLocation()
+  const isHomePage = location.pathname === '/'
 
-  const handleMenuClick = ({ key }: { key: string }) => {
-    navigate(key)
-  }
-
-  // Determine selected menu key - catalog paths should highlight the Catalog menu item
-  const getSelectedKey = () => {
-    if (location.pathname === '/') return '/'
-    if (location.pathname.startsWith('/catalog')) return '/catalog'
-    return location.pathname
-  }
+  const sidebarWidth = collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH
 
   return (
     <AntLayout style={{ minHeight: '100vh' }}>
-      <Sider theme="light" width={200}>
-        <div
-          style={{
-            height: 64,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 'bold',
-            fontSize: 16,
-            borderBottom: '1px solid #f0f0f0',
-          }}
-        >
-          Data Compass
-        </div>
-        <Menu
-          mode="inline"
-          selectedKeys={[getSelectedKey()]}
-          items={menuItems}
-          onClick={handleMenuClick}
-          style={{ borderRight: 0 }}
-        />
-      </Sider>
-      <AntLayout>
-        <Header
-          style={{
-            background: '#fff',
-            padding: '0 24px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'flex-end',
-            borderBottom: '1px solid #f0f0f0',
-          }}
-        >
-          <SearchBar />
-        </Header>
+      <CollapsibleSidebar />
+      <AntLayout
+        style={{
+          marginLeft: sidebarWidth,
+          transition: 'margin-left 0.2s ease',
+        }}
+      >
+        {/* Hide header on home page for clean search-first experience */}
+        {!isHomePage && (
+          <Header
+            style={{
+              background: '#fff',
+              padding: '0 24px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'flex-end',
+              borderBottom: '1px solid #f0f0f0',
+              position: 'sticky',
+              top: 0,
+              zIndex: 10,
+            }}
+          >
+            <SearchBar />
+          </Header>
+        )}
         <Content
           style={{
-            margin: 24,
-            padding: 24,
-            background: '#fff',
-            minHeight: 280,
+            margin: isHomePage ? 0 : 24,
+            padding: isHomePage ? 0 : 24,
+            background: isHomePage ? '#fafafa' : '#fff',
+            minHeight: isHomePage ? 'calc(100vh - 0px)' : 280,
           }}
         >
           <Outlet />

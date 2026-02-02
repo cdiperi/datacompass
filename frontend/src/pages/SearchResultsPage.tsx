@@ -66,8 +66,8 @@ export function SearchResultsPage() {
 
   const renderHighlight = (text: string, highlights: Record<string, string>, field: string) => {
     if (highlights[field]) {
-      // The backend returns highlighted text with markers, display it directly
-      return highlights[field]
+      // The backend returns highlighted text with <mark> tags, render as HTML
+      return <span dangerouslySetInnerHTML={{ __html: highlights[field] }} />
     }
     return text
   }

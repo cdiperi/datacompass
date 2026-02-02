@@ -5,7 +5,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ObjectDetailPage } from '../src/pages/ObjectDetailPage'
 import * as objectsHook from '../src/hooks/useObjects'
 import * as lineageHook from '../src/hooks/useLineage'
-import type { CatalogObjectDetail, LineageGraph } from '../src/api/types'
+import * as dqHook from '../src/hooks/useDQ'
+import type { CatalogObjectDetail, LineageGraph, DQConfigListItem, DQBreach } from '../src/api/types'
 
 // Mock lineage data
 const mockLineageGraph: LineageGraph = {
@@ -64,7 +65,7 @@ const mockObject: CatalogObjectDetail = {
   ],
 }
 
-function renderWithProviders(objectId: string) {
+function renderWithProviders(path: string) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -74,9 +75,9 @@ function renderWithProviders(objectId: string) {
   })
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[`/objects/${objectId}`]}>
+      <MemoryRouter initialEntries={[path]}>
         <Routes>
-          <Route path="/objects/:id" element={<ObjectDetailPage />} />
+          <Route path="/catalog/:source/:schema/:object" element={<ObjectDetailPage />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>
@@ -92,6 +93,17 @@ describe('ObjectDetailPage', () => {
       isLoading: false,
       error: null,
     } as ReturnType<typeof lineageHook.useLineage>)
+    // Mock DQ hooks
+    vi.spyOn(dqHook, 'useDQConfigs').mockReturnValue({
+      data: [] as DQConfigListItem[],
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof dqHook.useDQConfigs>)
+    vi.spyOn(dqHook, 'useDQBreaches').mockReturnValue({
+      data: [] as DQBreach[],
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof dqHook.useDQBreaches>)
   })
 
   it('displays loading state', () => {
@@ -101,7 +113,7 @@ describe('ObjectDetailPage', () => {
       error: null,
     } as ReturnType<typeof objectsHook.useObject>)
 
-    renderWithProviders('1')
+    renderWithProviders('/catalog/prod/public/users')
 
     // Ant Design Spin renders multiple spinner elements
     const spinners = document.querySelectorAll('.ant-spin')
@@ -115,19 +127,19 @@ describe('ObjectDetailPage', () => {
       error: null,
     } as ReturnType<typeof objectsHook.useObject>)
 
-    renderWithProviders('1')
+    renderWithProviders('/catalog/prod/public/users')
 
     expect(screen.getByRole('heading', { level: 2, name: 'users' })).toBeInTheDocument()
   })
 
-  it('displays object metadata', () => {
+  it('displays object metadata in Overview tab', () => {
     vi.spyOn(objectsHook, 'useObject').mockReturnValue({
       data: mockObject,
       isLoading: false,
       error: null,
     } as ReturnType<typeof objectsHook.useObject>)
 
-    renderWithProviders('1')
+    renderWithProviders('/catalog/prod/public/users')
 
     // 'prod' and 'public' appear in both breadcrumb and metadata
     expect(screen.getAllByText('prod').length).toBeGreaterThan(0)
@@ -135,46 +147,42 @@ describe('ObjectDetailPage', () => {
     expect(screen.getByText('TABLE')).toBeInTheDocument()
   })
 
-  it('displays description', () => {
+  it('displays description in Overview tab', () => {
     vi.spyOn(objectsHook, 'useObject').mockReturnValue({
       data: mockObject,
       isLoading: false,
       error: null,
     } as ReturnType<typeof objectsHook.useObject>)
 
-    renderWithProviders('1')
+    renderWithProviders('/catalog/prod/public/users')
 
     expect(screen.getByText('Contains user account information')).toBeInTheDocument()
   })
 
-  it('displays tags', () => {
+  it('displays tags in Overview tab', () => {
     vi.spyOn(objectsHook, 'useObject').mockReturnValue({
       data: mockObject,
       isLoading: false,
       error: null,
     } as ReturnType<typeof objectsHook.useObject>)
 
-    renderWithProviders('1')
+    renderWithProviders('/catalog/prod/public/users')
 
     expect(screen.getByText('pii')).toBeInTheDocument()
     expect(screen.getByText('core')).toBeInTheDocument()
   })
 
-  it('displays columns table', () => {
+  it('shows Columns tab with column count', () => {
     vi.spyOn(objectsHook, 'useObject').mockReturnValue({
       data: mockObject,
       isLoading: false,
       error: null,
     } as ReturnType<typeof objectsHook.useObject>)
 
-    renderWithProviders('1')
+    renderWithProviders('/catalog/prod/public/users')
 
-    expect(screen.getByText('Columns (3)')).toBeInTheDocument()
-    expect(screen.getByText('id')).toBeInTheDocument()
-    expect(screen.getByText('email')).toBeInTheDocument()
-    expect(screen.getByText('name')).toBeInTheDocument()
-    expect(screen.getByText('INTEGER')).toBeInTheDocument()
-    expect(screen.getByText('VARCHAR(255)')).toBeInTheDocument()
+    // The Columns tab label shows the count
+    expect(screen.getByRole('tab', { name: /Columns \(3\)/i })).toBeInTheDocument()
   })
 
   it('displays error when loading fails', () => {
@@ -184,7 +192,7 @@ describe('ObjectDetailPage', () => {
       error: new Error('Object not found'),
     } as ReturnType<typeof objectsHook.useObject>)
 
-    renderWithProviders('999')
+    renderWithProviders('/catalog/prod/public/nonexistent')
 
     expect(screen.getByText('Error loading object')).toBeInTheDocument()
     expect(screen.getByText('Object not found')).toBeInTheDocument()
@@ -197,21 +205,35 @@ describe('ObjectDetailPage', () => {
       error: null,
     } as ReturnType<typeof objectsHook.useObject>)
 
-    renderWithProviders('999')
+    renderWithProviders('/catalog/prod/public/nonexistent')
 
     expect(screen.getByText('Object not found')).toBeInTheDocument()
   })
 
-  it('displays breadcrumb navigation', () => {
+  it('displays breadcrumb navigation with Catalog link', () => {
     vi.spyOn(objectsHook, 'useObject').mockReturnValue({
       data: mockObject,
       isLoading: false,
       error: null,
     } as ReturnType<typeof objectsHook.useObject>)
 
-    renderWithProviders('1')
+    renderWithProviders('/catalog/prod/public/users')
 
-    // Check for breadcrumb items (may appear in links or as text)
-    expect(screen.getByText('Browse')).toBeInTheDocument()
+    // Check for Catalog in breadcrumb
+    expect(screen.getByText('Catalog')).toBeInTheDocument()
+  })
+
+  it('shows Overview tab as the default active tab', () => {
+    vi.spyOn(objectsHook, 'useObject').mockReturnValue({
+      data: mockObject,
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof objectsHook.useObject>)
+
+    renderWithProviders('/catalog/prod/public/users')
+
+    // Overview should be the active tab
+    const overviewTab = screen.getByRole('tab', { name: /Overview/i })
+    expect(overviewTab).toHaveAttribute('aria-selected', 'true')
   })
 })

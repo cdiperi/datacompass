@@ -1,84 +1,53 @@
-import { Row, Col, Typography, Statistic, Card, Spin, Empty, Alert } from 'antd'
-import { DatabaseOutlined, TableOutlined } from '@ant-design/icons'
-import { useSources } from '../hooks/useSources'
-import { useObjects } from '../hooks/useObjects'
-import { SourceCard } from '../components/SourceCard'
-import { useNavigate } from 'react-router-dom'
+import { Typography } from 'antd'
+import { CompassOutlined } from '@ant-design/icons'
+import { SearchBar } from '../components/SearchBar'
 
-const { Title } = Typography
+const { Title, Text } = Typography
 
 export function HomePage() {
-  const navigate = useNavigate()
-  const { data: sources, isLoading: sourcesLoading, error: sourcesError } = useSources()
-  const { data: objects, isLoading: objectsLoading } = useObjects()
-
-  if (sourcesError) {
-    return (
-      <Alert
-        type="error"
-        showIcon
-        message={
-          <>
-            <strong>Error loading sources</strong>
-            <div>{sourcesError.message}</div>
-          </>
-        }
-      />
-    )
-  }
-
-  const totalObjects = objects?.length || 0
-
   return (
-    <div>
-      <Title level={2}>Dashboard</Title>
-
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Data Sources"
-              value={sources?.length || 0}
-              prefix={<DatabaseOutlined />}
-              loading={sourcesLoading}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Total Objects"
-              value={totalObjects}
-              prefix={<TableOutlined />}
-              loading={objectsLoading}
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      <Title level={3}>Data Sources</Title>
-
-      {sourcesLoading ? (
-        <div style={{ textAlign: 'center', padding: 48 }}>
-          <Spin size="large" />
-        </div>
-      ) : sources && sources.length > 0 ? (
-        <Row gutter={[16, 16]}>
-          {sources.map((source) => (
-            <Col xs={24} sm={12} lg={8} key={source.id}>
-              <SourceCard
-                source={source}
-                onClick={() => navigate(`/browse?source=${encodeURIComponent(source.name)}`)}
-              />
-            </Col>
-          ))}
-        </Row>
-      ) : (
-        <Empty
-          description="No data sources configured"
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        paddingTop: '20vh',
+        padding: '20vh 24px 24px 24px',
+      }}
+    >
+      {/* Brand */}
+      <div style={{ textAlign: 'center', marginBottom: 48 }}>
+        <CompassOutlined
+          style={{
+            fontSize: 64,
+            color: '#1677ff',
+            marginBottom: 16,
+          }}
         />
-      )}
+        <Title
+          level={1}
+          style={{
+            margin: 0,
+            fontWeight: 300,
+            letterSpacing: -1,
+          }}
+        >
+          Data Compass
+        </Title>
+        <Text type="secondary" style={{ fontSize: 16 }}>
+          Navigate your data with confidence
+        </Text>
+      </div>
+
+      {/* Search */}
+      <div style={{ width: '100%', maxWidth: 560 }}>
+        <SearchBar
+          autoFocus
+          size="large"
+          width="100%"
+          placeholder="Search for tables, views, columns..."
+        />
+      </div>
     </div>
   )
 }

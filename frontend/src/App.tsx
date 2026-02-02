@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ConfigProvider } from 'antd'
+import { SidebarProvider } from './context/SidebarContext'
 import { Layout } from './components/Layout'
 import { HomePage } from './pages/HomePage'
 import { BrowsePage } from './pages/BrowsePage'
@@ -30,29 +31,31 @@ function App() {
           },
         }}
       >
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Layout />}>
-              <Route index element={<HomePage />} />
+        <SidebarProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<Layout />}>
+                <Route index element={<HomePage />} />
 
-              {/* Catalog hierarchy */}
-              <Route path="catalog" element={<BrowsePage />} />
-              <Route path="catalog/:source" element={<BrowsePage />} />
-              <Route path="catalog/:source/:schema" element={<BrowsePage />} />
-              <Route path="catalog/:source/:schema/:object" element={<ObjectDetailPage />} />
+                {/* Catalog hierarchy */}
+                <Route path="catalog" element={<BrowsePage />} />
+                <Route path="catalog/:source" element={<BrowsePage />} />
+                <Route path="catalog/:source/:schema" element={<BrowsePage />} />
+                <Route path="catalog/:source/:schema/:object" element={<ObjectDetailPage />} />
 
-              {/* Feature hubs */}
-              <Route path="search" element={<SearchResultsPage />} />
-              <Route path="dq" element={<DQHubPage />} />
-              <Route path="deprecation" element={<DeprecationHubPage />} />
-              <Route path="scheduler" element={<SchedulerHubPage />} />
+                {/* Feature hubs */}
+                <Route path="search" element={<SearchResultsPage />} />
+                <Route path="dq" element={<DQHubPage />} />
+                <Route path="deprecation" element={<DeprecationHubPage />} />
+                <Route path="scheduler" element={<SchedulerHubPage />} />
 
-              {/* Legacy redirects */}
-              <Route path="objects/:id" element={<ObjectRedirect />} />
-              <Route path="browse" element={<Navigate to="/catalog" replace />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
+                {/* Legacy redirects */}
+                <Route path="objects/:id" element={<ObjectRedirect />} />
+                <Route path="browse" element={<Navigate to="/catalog" replace />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </SidebarProvider>
       </ConfigProvider>
     </QueryClientProvider>
   )
