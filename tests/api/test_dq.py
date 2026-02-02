@@ -153,6 +153,42 @@ class TestDQAPI:
         response = client.get("/api/v1/dq/configs/99999")
         assert response.status_code == 404
 
+    def test_update_config(self, client_with_object: TestClient):
+        """Test updating a DQ config."""
+        objects_response = client_with_object.get("/api/v1/objects")
+        object_id = objects_response.json()[0]["id"]
+
+        # Create config
+        create_response = client_with_object.post(
+            "/api/v1/dq/configs",
+            json={"object_id": object_id, "grain": "daily"},
+        )
+        config_id = create_response.json()["id"]
+
+        # Update config
+        response = client_with_object.patch(
+            f"/api/v1/dq/configs/{config_id}",
+            json={
+                "date_column": "updated_at",
+                "grain": "hourly",
+                "is_enabled": False,
+            },
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["date_column"] == "updated_at"
+        assert data["grain"] == "hourly"
+        assert data["is_enabled"] is False
+
+    def test_update_config_not_found(self, client: TestClient):
+        """Test updating non-existent config."""
+        response = client.patch(
+            "/api/v1/dq/configs/99999",
+            json={"grain": "hourly"},
+        )
+        assert response.status_code == 404
+
     def test_delete_config(self, client_with_object: TestClient):
         """Test deleting a config."""
         objects_response = client_with_object.get("/api/v1/objects")

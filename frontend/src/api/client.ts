@@ -23,9 +23,14 @@ import type {
   DeprecationResponse,
   DQBreach,
   DQBreachFilters,
+  DQConfigCreate,
   DQConfigDetail,
   DQConfigFilters,
   DQConfigListItem,
+  DQConfigUpdate,
+  DQExpectation,
+  DQExpectationCreate,
+  DQExpectationUpdate,
   DQHubSummary,
   DQRunResult,
   LineageFilters,
@@ -240,6 +245,44 @@ export async function updateDQBreachStatus(
 
 export async function getDQHubSummary(): Promise<DQHubSummary> {
   return fetchJson<DQHubSummary>(`${API_BASE}/dq/hub/summary`)
+}
+
+export async function createDQConfig(data: DQConfigCreate): Promise<DQConfigDetail> {
+  return fetchJson<DQConfigDetail>(`${API_BASE}/dq/configs`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateDQConfig(
+  configId: number,
+  data: DQConfigUpdate
+): Promise<DQConfigDetail> {
+  return fetchJson<DQConfigDetail>(`${API_BASE}/dq/configs/${configId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function createDQExpectation(data: DQExpectationCreate): Promise<DQExpectation> {
+  return fetchJson<DQExpectation>(`${API_BASE}/dq/expectations`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function updateDQExpectation(
+  expectationId: number,
+  data: DQExpectationUpdate
+): Promise<DQExpectation> {
+  return fetchJson<DQExpectation>(`${API_BASE}/dq/expectations/${expectationId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  })
+}
+
+export async function deleteDQExpectation(expectationId: number): Promise<void> {
+  await fetch(`${API_BASE}/dq/expectations/${expectationId}`, { method: 'DELETE' })
 }
 
 // =============================================================================

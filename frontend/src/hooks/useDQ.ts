@@ -4,6 +4,10 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  createDQConfig,
+  createDQExpectation,
+  deleteDQConfig,
+  deleteDQExpectation,
   getDQBreaches,
   getDQBreach,
   getDQConfigs,
@@ -11,14 +15,21 @@ import {
   getDQHubSummary,
   runDQConfig,
   updateDQBreachStatus,
+  updateDQConfig,
+  updateDQExpectation,
 } from '../api/client'
 import type {
   BreachStatusUpdate,
   DQBreach,
   DQBreachFilters,
+  DQConfigCreate,
   DQConfigDetail,
   DQConfigFilters,
   DQConfigListItem,
+  DQConfigUpdate,
+  DQExpectation,
+  DQExpectationCreate,
+  DQExpectationUpdate,
   DQHubSummary,
   DQRunResult,
 } from '../api/types'
@@ -117,6 +128,107 @@ export function useUpdateBreachStatus() {
       queryClient.setQueryData(dqKeys.breachDetail(updatedBreach.id), updatedBreach)
       // Invalidate lists
       queryClient.invalidateQueries({ queryKey: dqKeys.breaches() })
+      queryClient.invalidateQueries({ queryKey: dqKeys.hubSummary() })
+    },
+  })
+}
+
+/**
+ * Create a new DQ config.
+ */
+export function useCreateDQConfig() {
+  const queryClient = useQueryClient()
+
+  return useMutation<DQConfigDetail, Error, DQConfigCreate>({
+    mutationFn: createDQConfig,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: dqKeys.configs() })
+      queryClient.invalidateQueries({ queryKey: dqKeys.hubSummary() })
+    },
+  })
+}
+
+/**
+ * Update a DQ config.
+ */
+export function useUpdateDQConfig() {
+  const queryClient = useQueryClient()
+
+  return useMutation<DQConfigDetail, Error, { configId: number; data: DQConfigUpdate }>({
+    mutationFn: ({ configId, data }) => updateDQConfig(configId, data),
+    onSuccess: (updatedConfig) => {
+      queryClient.setQueryData(dqKeys.configDetail(updatedConfig.id), updatedConfig)
+      queryClient.invalidateQueries({ queryKey: dqKeys.configs() })
+      queryClient.invalidateQueries({ queryKey: dqKeys.hubSummary() })
+    },
+  })
+}
+
+/**
+ * Delete a DQ config.
+ */
+export function useDeleteDQConfig() {
+  const queryClient = useQueryClient()
+
+  return useMutation<void, Error, number>({
+    mutationFn: deleteDQConfig,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: dqKeys.configs() })
+      queryClient.invalidateQueries({ queryKey: dqKeys.hubSummary() })
+    },
+  })
+}
+
+/**
+ * Create a new DQ expectation.
+ */
+export function useCreateDQExpectation() {
+  const queryClient = useQueryClient()
+
+  return useMutation<DQExpectation, Error, DQExpectationCreate>({
+    mutationFn: createDQExpectation,
+    onSuccess: (newExpectation) => {
+      queryClient.invalidateQueries({
+        queryKey: dqKeys.configDetail(newExpectation.config_id),
+      })
+      queryClient.invalidateQueries({ queryKey: dqKeys.configs() })
+      queryClient.invalidateQueries({ queryKey: dqKeys.hubSummary() })
+    },
+  })
+}
+
+/**
+ * Update a DQ expectation.
+ */
+export function useUpdateDQExpectation() {
+  const queryClient = useQueryClient()
+
+  return useMutation<
+    DQExpectation,
+    Error,
+    { expectationId: number; data: DQExpectationUpdate }
+  >({
+    mutationFn: ({ expectationId, data }) => updateDQExpectation(expectationId, data),
+    onSuccess: (updatedExpectation) => {
+      queryClient.invalidateQueries({
+        queryKey: dqKeys.configDetail(updatedExpectation.config_id),
+      })
+      queryClient.invalidateQueries({ queryKey: dqKeys.configs() })
+    },
+  })
+}
+
+/**
+ * Delete a DQ expectation.
+ */
+export function useDeleteDQExpectation() {
+  const queryClient = useQueryClient()
+
+  return useMutation<void, Error, { expectationId: number; configId: number }>({
+    mutationFn: ({ expectationId }) => deleteDQExpectation(expectationId),
+    onSuccess: (_, { configId }) => {
+      queryClient.invalidateQueries({ queryKey: dqKeys.configDetail(configId) })
+      queryClient.invalidateQueries({ queryKey: dqKeys.configs() })
       queryClient.invalidateQueries({ queryKey: dqKeys.hubSummary() })
     },
   })

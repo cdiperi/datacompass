@@ -213,6 +213,41 @@ class DQService:
         config = self.dq_repo.get_config_with_details(config.id)
         return self._config_to_detail_response(config)
 
+    def update_config(
+        self,
+        config_id: int,
+        date_column: str | None = None,
+        grain: str | None = None,
+        is_enabled: bool | None = None,
+    ) -> DQConfigDetailResponse:
+        """Update a DQ config.
+
+        Args:
+            config_id: ID of the DQ config.
+            date_column: New date column value.
+            grain: New grain value.
+            is_enabled: New enabled status.
+
+        Returns:
+            Updated DQConfigDetailResponse.
+
+        Raises:
+            DQConfigNotFoundError: If config not found.
+        """
+        config = self.dq_repo.update_config(
+            config_id=config_id,
+            date_column=date_column,
+            grain=grain,
+            is_enabled=is_enabled,
+        )
+
+        if config is None:
+            raise DQConfigNotFoundError(config_id)
+
+        # Reload with relationships
+        config = self.dq_repo.get_config_with_details(config_id)
+        return self._config_to_detail_response(config)
+
     def delete_config(self, config_id: int) -> bool:
         """Delete a DQ config.
 

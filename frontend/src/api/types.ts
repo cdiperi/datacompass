@@ -296,6 +296,37 @@ export interface DQBreachFilters {
   offset?: number
 }
 
+export type DQGrain = 'daily' | 'hourly'
+export type DQExpectationType = 'row_count' | 'null_count' | 'distinct_count' | 'min' | 'max' | 'mean' | 'sum'
+
+export interface DQConfigCreate {
+  object_id: number
+  date_column?: string | null
+  grain?: DQGrain
+}
+
+export interface DQConfigUpdate {
+  date_column?: string | null
+  grain?: DQGrain
+  is_enabled?: boolean
+}
+
+export interface DQExpectationCreate {
+  config_id: number
+  expectation_type: DQExpectationType
+  column_name?: string | null
+  threshold_config: ThresholdConfig
+  priority?: DQPriority
+}
+
+export interface DQExpectationUpdate {
+  expectation_type?: DQExpectationType
+  column_name?: string | null
+  threshold_config?: ThresholdConfig
+  priority?: DQPriority
+  is_enabled?: boolean
+}
+
 export interface DQConfigFilters {
   source_id?: number
   enabled_only?: boolean

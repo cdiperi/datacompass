@@ -12,6 +12,7 @@ from datacompass.core.models.dq import (
     DQConfigCreate,
     DQConfigDetailResponse,
     DQConfigListItem,
+    DQConfigUpdate,
     DQExpectationCreate,
     DQExpectationResponse,
     DQExpectationUpdate,
@@ -82,6 +83,27 @@ async def get_config(
         404: If config not found.
     """
     return dq_service.get_config(config_id)
+
+
+@router.patch("/configs/{config_id}", response_model=DQConfigDetailResponse)
+async def update_config(
+    config_id: int,
+    data: DQConfigUpdate,
+    dq_service: DQServiceDep,
+) -> DQConfigDetailResponse:
+    """Update a DQ configuration.
+
+    Partially updates a DQ config. Only provided fields are updated.
+
+    Raises:
+        404: If config not found.
+    """
+    return dq_service.update_config(
+        config_id=config_id,
+        date_column=data.date_column,
+        grain=data.grain,
+        is_enabled=data.is_enabled,
+    )
 
 
 @router.delete("/configs/{config_id}", status_code=204)
