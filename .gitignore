@@ -67,6 +67,13 @@ Desktop.ini
 .env.local
 .env.*.local
 
+# Source configs (may contain secrets)
+*-source.yaml
+*-source.yml
+sources/*.yaml
+sources/*.yml
+configs/
+
 # Data Compass local data
 *.datacompass/
 datacompass.db
