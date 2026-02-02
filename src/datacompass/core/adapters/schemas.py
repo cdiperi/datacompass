@@ -15,6 +15,78 @@ class AuthMethod(str, Enum):
     OAUTH = "oauth"
 
 
+class SSLMode(str, Enum):
+    """SSL modes for PostgreSQL connections."""
+
+    DISABLE = "disable"
+    ALLOW = "allow"
+    PREFER = "prefer"
+    REQUIRE = "require"
+    VERIFY_CA = "verify-ca"
+    VERIFY_FULL = "verify-full"
+
+
+class PostgreSQLConfig(BaseModel):
+    """Configuration for PostgreSQL connections.
+
+    Supports standard username/password authentication with optional SSL.
+    """
+
+    # Connection settings
+    host: str = Field(
+        ...,
+        description="PostgreSQL server hostname or IP address",
+    )
+    port: int = Field(
+        default=5432,
+        description="PostgreSQL server port",
+        ge=1,
+        le=65535,
+    )
+    database: str = Field(
+        ...,
+        description="Database name to connect to",
+    )
+    username: str = Field(
+        ...,
+        description="Database username",
+    )
+    password: SecretStr = Field(
+        ...,
+        description="Database password",
+    )
+
+    # SSL settings
+    ssl_mode: SSLMode = Field(
+        default=SSLMode.PREFER,
+        description="SSL connection mode",
+    )
+
+    # Filtering
+    schema_filter: str | None = Field(
+        default=None,
+        description="Regex pattern to filter schemas (e.g., '^(sales|analytics)$')",
+    )
+    exclude_schemas: list[str] = Field(
+        default_factory=lambda: ["pg_catalog", "information_schema", "pg_toast"],
+        description="Schemas to exclude from scanning",
+    )
+
+    # Timeouts and options
+    connect_timeout: int = Field(
+        default=10,
+        description="Connection timeout in seconds",
+        ge=1,
+        le=300,
+    )
+    query_timeout: int = Field(
+        default=300,
+        description="Query timeout in seconds",
+        ge=1,
+        le=3600,
+    )
+
+
 class DatabricksConfig(BaseModel):
     """Configuration for Databricks Unity Catalog connections.
 

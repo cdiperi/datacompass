@@ -10,8 +10,14 @@ from datacompass.core.adapters.exceptions import (
     AdapterNotFoundError,
     AdapterQueryError,
 )
+from datacompass.core.adapters.postgresql import PostgreSQLAdapter
 from datacompass.core.adapters.registry import AdapterInfo, AdapterRegistry
-from datacompass.core.adapters.schemas import AuthMethod, DatabricksConfig
+from datacompass.core.adapters.schemas import (
+    AuthMethod,
+    DatabricksConfig,
+    PostgreSQLConfig,
+    SSLMode,
+)
 
 __all__ = [
     # Base
@@ -29,6 +35,9 @@ __all__ = [
     # Config schemas
     "AuthMethod",
     "DatabricksConfig",
+    "PostgreSQLConfig",
+    "SSLMode",
     # Adapters
     "DatabricksAdapter",
+    "PostgreSQLAdapter",
 ]
