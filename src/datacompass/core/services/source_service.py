@@ -2,15 +2,41 @@
 
 import asyncio
 import time
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from pydantic import BaseModel, SecretStr
 from sqlalchemy.orm import Session
 
 from datacompass.core.adapters import AdapterNotFoundError, AdapterRegistry
 from datacompass.core.models import ConnectionTestResult, DataSource
 from datacompass.core.repositories import DataSourceRepository
 from datacompass.core.services.config_loader import load_source_config
+
+
+def _serialize_config_with_secrets(model: BaseModel) -> dict[str, Any]:
+    """Serialize a Pydantic model, exposing SecretStr values.
+
+    This is needed because model_dump(mode='json') masks SecretStr fields,
+    but we need the actual values when storing to the database.
+    """
+    result: dict[str, Any] = {}
+    for field_name, field_value in model:
+        if isinstance(field_value, SecretStr):
+            result[field_name] = field_value.get_secret_value()
+        elif isinstance(field_value, Enum):
+            result[field_name] = field_value.value
+        elif isinstance(field_value, BaseModel):
+            result[field_name] = _serialize_config_with_secrets(field_value)
+        elif isinstance(field_value, list):
+            result[field_name] = [
+                _serialize_config_with_secrets(v) if isinstance(v, BaseModel) else v
+                for v in field_value
+            ]
+        else:
+            result[field_name] = field_value
+    return result
 
 
 class SourceServiceError(Exception):
@@ -91,8 +117,8 @@ class SourceService:
         schema = AdapterRegistry.get_config_schema(source_type)
         validated = schema(**config)
 
-        # Store config as dict (with secrets as strings)
-        connection_info = validated.model_dump(mode="json")
+        # Store config as dict (with secrets exposed for storage)
+        connection_info = _serialize_config_with_secrets(validated)
 
         source = self.repo.create(
             name=name,
@@ -139,8 +165,8 @@ class SourceService:
         schema = AdapterRegistry.get_config_schema(source_type)
         validated = schema(**connection_info)
 
-        # Store config as dict (with secrets as strings)
-        validated_info = validated.model_dump(mode="json")
+        # Store config as dict (with secrets exposed for storage)
+        validated_info = _serialize_config_with_secrets(validated)
 
         source = self.repo.create(
             name=name,
