@@ -2,7 +2,7 @@
 
 from collections.abc import Generator
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from rich.console import Console
@@ -92,6 +92,8 @@ def serialize_for_json(obj: Any) -> Any:
         JSON-serializable object.
     """
     if isinstance(obj, datetime):
+        return obj.isoformat()
+    elif isinstance(obj, date):
         return obj.isoformat()
     elif hasattr(obj, "model_dump"):
         return obj.model_dump(mode="json")

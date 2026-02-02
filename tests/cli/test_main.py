@@ -168,7 +168,7 @@ class TestDqCommands:
         assert "run" in result.stdout
         assert "status" in result.stdout
 
-    def test_dq_run_no_configs(self, cli_runner: CliRunner):
+    def test_dq_run_no_configs(self, cli_runner: CliRunner, temp_data_dir: Path):
         """Test dq run with --all when no configs exist."""
         result = cli_runner.invoke(app, ["dq", "run", "--all"])
         assert result.exit_code == 0
