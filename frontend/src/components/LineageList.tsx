@@ -1,5 +1,5 @@
 /**
- * Component for displaying lineage (dependencies/dependents) as a list.
+ * Component for displaying lineage (dependencies/dependents) as a list or graph.
  */
 
 import { useState } from 'react'
@@ -8,6 +8,7 @@ import {
   Alert,
   Empty,
   Radio,
+  Segmented,
   Spin,
   Table,
   Tag,
@@ -15,10 +16,12 @@ import {
   InputNumber,
   Space,
 } from 'antd'
+import { TableOutlined, ApartmentOutlined } from '@ant-design/icons'
 import type { ColumnsType } from 'antd/es/table'
 import { useLineage } from '../hooks/useLineage'
 import type { LineageNode, ExternalNode } from '../api/types'
 import { getObjectUrl } from '../utils/urls'
+import { LineageGraph } from './lineage/LineageGraph'
 
 const { Text } = Typography
 
@@ -28,9 +31,12 @@ interface LineageListProps {
 
 type LineageItem = (LineageNode | ExternalNode) & { isExternal?: boolean }
 
+type ViewMode = 'table' | 'graph'
+
 export function LineageList({ objectId }: LineageListProps) {
   const [direction, setDirection] = useState<'upstream' | 'downstream'>('upstream')
   const [depth, setDepth] = useState(3)
+  const [viewMode, setViewMode] = useState<ViewMode>('graph')
 
   const { data: lineage, isLoading, error } = useLineage(objectId, {
     direction,
@@ -93,6 +99,8 @@ export function LineageList({ objectId }: LineageListProps) {
     })),
   ].sort((a, b) => a.distance - b.distance)
 
+  const hasData = items.length > 0
+
   return (
     <div>
       <Space style={{ marginBottom: 16 }} wrap>
@@ -117,6 +125,14 @@ export function LineageList({ objectId }: LineageListProps) {
             style={{ width: 60 }}
           />
         </Space>
+        <Segmented
+          value={viewMode}
+          onChange={(value) => setViewMode(value as ViewMode)}
+          options={[
+            { label: 'Graph', value: 'graph', icon: <ApartmentOutlined /> },
+            { label: 'Table', value: 'table', icon: <TableOutlined /> },
+          ]}
+        />
       </Space>
 
       {error && (
@@ -133,7 +149,7 @@ export function LineageList({ objectId }: LineageListProps) {
         <div style={{ textAlign: 'center', padding: 24 }}>
           <Spin />
         </div>
-      ) : items.length === 0 ? (
+      ) : !hasData ? (
         <Empty
           description={
             direction === 'upstream'
@@ -141,6 +157,18 @@ export function LineageList({ objectId }: LineageListProps) {
               : 'No downstream dependents found'
           }
         />
+      ) : viewMode === 'graph' ? (
+        <>
+          <LineageGraph lineage={lineage} />
+          {lineage?.truncated && (
+            <Alert
+              type="info"
+              showIcon
+              message={`Graph truncated at depth ${depth}. Increase depth to see more.`}
+              style={{ marginTop: 16 }}
+            />
+          )}
+        </>
       ) : (
         <>
           <Table
