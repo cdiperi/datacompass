@@ -6,7 +6,7 @@ class ResizeObserverMock {
   unobserve() {}
   disconnect() {}
 }
-global.ResizeObserver = ResizeObserverMock
+(globalThis as typeof globalThis & { ResizeObserver: typeof ResizeObserverMock }).ResizeObserver = ResizeObserverMock
 
 // Mock matchMedia for Ant Design's responsive features
 Object.defineProperty(window, 'matchMedia', {

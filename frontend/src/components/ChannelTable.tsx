@@ -43,8 +43,9 @@ const channelTypeColors: Record<ChannelType, string> = {
 export function ChannelTable({
   initialChannelType,
   limit = 50,
-  showFilters = true,
+  showFilters: _showFilters = true,
 }: ChannelTableProps) {
+  void _showFilters // TODO: implement filters UI
   const { data: channels, isLoading, error } = useNotificationChannels({
     channel_type: initialChannelType,
     limit,
