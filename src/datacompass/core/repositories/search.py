@@ -58,10 +58,14 @@ class SearchRepository:
         Returns:
             List of SearchResult ordered by relevance (best first).
         """
+        # Build FTS5 query with prefix matching
+        # Add * to each term for prefix matching (e.g., "cust" matches "customer")
+        fts_query = self._build_fts_query(query)
+
         # Build FTS5 query with optional filters
         # We join back to catalog_objects to ensure we only return valid objects
         filters = []
-        params: dict[str, Any] = {"query": query, "limit": limit}
+        params: dict[str, Any] = {"query": fts_query, "limit": limit}
 
         if source:
             filters.append("source_name = :source")
@@ -297,3 +301,32 @@ class SearchRepository:
         if hasattr(obj, "columns") and obj.columns:
             return " ".join(col.column_name for col in obj.columns)
         return ""
+
+    def _build_fts_query(self, query: str) -> str:
+        """Build FTS5 query with prefix matching.
+
+        Converts user input into FTS5 query syntax with prefix matching.
+        Each word gets a * suffix for prefix matching.
+
+        Examples:
+            "c" -> "c*"
+            "cust order" -> "cust* order*"
+            "daily_sales" -> "daily_sales*"
+
+        Args:
+            query: Raw user search input.
+
+        Returns:
+            FTS5 query string with prefix matching.
+        """
+        # Split on whitespace and filter empty tokens
+        tokens = [t.strip() for t in query.split() if t.strip()]
+
+        if not tokens:
+            return query
+
+        # Add prefix wildcard to each token
+        # This allows "c" to match "customer", "category", etc.
+        prefix_tokens = [f"{token}*" for token in tokens]
+
+        return " ".join(prefix_tokens)
