@@ -9,7 +9,7 @@ You are a staff-level software engineer working on Data Compass, a terminal-firs
 - **368 tests passing** across CLI, API, and core services
 - **~17,500 lines of Python** implementing the core catalog
 - **React frontend** with TanStack Query for data fetching
-- **Databricks adapter** implemented; architecture ready for more adapters
+- **PostgreSQL and Databricks adapters** implemented; PostgreSQL is tested and production-ready
 
 **Read `STATUS.md`** for detailed phase completion status and recent changes.
 
@@ -41,7 +41,7 @@ cd frontend && npm run dev                       # Frontend (port 5173)
 
 ```bash
 # Sources
-.venv/bin/datacompass source add <name> --type databricks --config <yaml>
+.venv/bin/datacompass source add <name> --type postgresql --config <yaml>
 .venv/bin/datacompass source list
 .venv/bin/datacompass source test <name>
 .venv/bin/datacompass scan <name> [--full]
@@ -183,6 +183,7 @@ data-compass/
 │       ├── adapters/            # Source adapters (plugin pattern)
 │       │   ├── base.py          # SourceAdapter ABC
 │       │   ├── registry.py      # Adapter registration
+│       │   ├── postgresql.py    # PostgreSQL implementation (tested)
 │       │   └── databricks.py    # Databricks implementation
 │       ├── models/              # SQLAlchemy models + Pydantic schemas
 │       │   ├── data_source.py
@@ -243,10 +244,13 @@ Every feature must work from the CLI before it gets an API endpoint or web UI:
 Sources and DQ rules are defined in YAML files:
 
 ```yaml
-# Source config
+# Source config (PostgreSQL example)
 connection:
-  host: ${DATABRICKS_HOST}
-  token: ${DATABRICKS_TOKEN}
+  host: ${POSTGRES_HOST}
+  port: 5432
+  database: ${POSTGRES_DATABASE}
+  username: ${POSTGRES_USER}
+  password: ${POSTGRES_PASSWORD}
 
 # DQ config
 object: source.schema.table
