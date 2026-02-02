@@ -43,6 +43,34 @@ class CatalogObjectRepository(BaseRepository[CatalogObject]):
         )
         return self.session.scalar(stmt)
 
+    def get_by_qualified_name(
+        self,
+        source_id: int,
+        schema_name: str,
+        object_name: str,
+    ) -> CatalogObject | None:
+        """Get an object by schema and name (any type).
+
+        Used for lineage resolution where the object type is not known.
+
+        Args:
+            source_id: ID of the data source.
+            schema_name: Schema name.
+            object_name: Object name.
+
+        Returns:
+            CatalogObject instance or None if not found.
+        """
+        stmt = select(CatalogObject).where(
+            and_(
+                CatalogObject.source_id == source_id,
+                CatalogObject.schema_name == schema_name,
+                CatalogObject.object_name == object_name,
+                CatalogObject.deleted_at.is_(None),
+            )
+        )
+        return self.session.scalar(stmt)
+
     def upsert(
         self,
         source_id: int,

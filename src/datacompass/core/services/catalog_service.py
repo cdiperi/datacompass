@@ -20,6 +20,7 @@ from datacompass.core.repositories import (
     CatalogObjectRepository,
     ColumnRepository,
     DataSourceRepository,
+    DependencyRepository,
     SearchRepository,
 )
 from datacompass.core.services.source_service import SourceNotFoundError
@@ -59,6 +60,7 @@ class CatalogService:
         self.object_repo = CatalogObjectRepository(session)
         self.column_repo = ColumnRepository(session)
         self.search_repo = SearchRepository(session)
+        self.dependency_repo = DependencyRepository(session)
 
     def scan_source(self, name: str, full: bool = False) -> ScanResult:
         """Scan a data source to discover and update catalog objects.
@@ -153,6 +155,9 @@ class CatalogService:
                     stats.columns_created += created
                     stats.columns_updated += updated
                     stats.columns_deleted += deleted
+
+                # Extract lineage if adapter supports it
+                await self._extract_lineage(adapter, source.id)
 
                 # Soft-delete objects no longer in source
                 if full:
@@ -348,3 +353,88 @@ class CatalogService:
                         return self.object_repo.get_with_source(obj.id)
 
         return None
+
+    async def _extract_lineage(self, adapter: Any, source_id: int) -> None:
+        """Extract lineage from adapter if supported.
+
+        Calls adapter's get_foreign_keys() and get_view_dependencies() methods
+        if they exist, and stores the relationships in the dependency table.
+
+        Args:
+            adapter: The source adapter instance.
+            source_id: ID of the data source.
+        """
+        dependencies: list[dict[str, Any]] = []
+
+        # Extract foreign key relationships
+        try:
+            if hasattr(adapter, "get_foreign_keys") and callable(adapter.get_foreign_keys):
+                fks = await adapter.get_foreign_keys()
+                if isinstance(fks, list):
+                    for fk in fks:
+                        # Resolve source object (the table with the FK)
+                        source_obj = self.object_repo.get_by_qualified_name(
+                            source_id=source_id,
+                            schema_name=fk["source_schema"],
+                            object_name=fk["source_table"],
+                        )
+                        # Resolve target object (the referenced table)
+                        target_obj = self.object_repo.get_by_qualified_name(
+                            source_id=source_id,
+                            schema_name=fk["target_schema"],
+                            object_name=fk["target_table"],
+                        )
+
+                        if source_obj and target_obj:
+                            dependencies.append({
+                                "object_id": source_obj.id,
+                                "target_id": target_obj.id,
+                                "dependency_type": "DIRECT",
+                                "confidence": "HIGH",
+                            })
+        except (TypeError, AttributeError):
+            # Adapter doesn't support foreign key extraction
+            pass
+
+        # Extract view dependencies
+        try:
+            if hasattr(adapter, "get_view_dependencies") and callable(
+                adapter.get_view_dependencies
+            ):
+                view_deps = await adapter.get_view_dependencies()
+                if isinstance(view_deps, list):
+                    for dep in view_deps:
+                        # Resolve the view
+                        view_obj = self.object_repo.get_by_qualified_name(
+                            source_id=source_id,
+                            schema_name=dep["view_schema"],
+                            object_name=dep["view_name"],
+                        )
+                        # Resolve the source table/view
+                        source_table = self.object_repo.get_by_qualified_name(
+                            source_id=source_id,
+                            schema_name=dep["source_schema"],
+                            object_name=dep["source_table"],
+                        )
+
+                        if view_obj and source_table:
+                            dependencies.append({
+                                "object_id": view_obj.id,
+                                "target_id": source_table.id,
+                                "dependency_type": "DIRECT",
+                                "confidence": "HIGH",
+                            })
+        except (TypeError, AttributeError):
+            # Adapter doesn't support view dependency extraction
+            pass
+
+        # Batch upsert dependencies
+        if dependencies:
+            # Clear existing source_metadata dependencies for this source
+            self.dependency_repo.delete_by_parsing_source(source_id, "source_metadata")
+            # Insert new dependencies
+            self.dependency_repo.upsert_batch(
+                source_id=source_id,
+                dependencies=dependencies,
+                parsing_source="source_metadata",
+            )
