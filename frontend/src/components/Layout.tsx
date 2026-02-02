@@ -1,5 +1,5 @@
 import { Layout as AntLayout, Menu } from 'antd'
-import { BellOutlined, ClockCircleOutlined, HomeOutlined, SafetyCertificateOutlined, ScheduleOutlined, TableOutlined } from '@ant-design/icons'
+import { ClockCircleOutlined, HomeOutlined, SafetyCertificateOutlined, ScheduleOutlined, TableOutlined } from '@ant-design/icons'
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { SearchBar } from './SearchBar'
 
@@ -12,9 +12,9 @@ const menuItems = [
     label: 'Home',
   },
   {
-    key: '/browse',
+    key: '/catalog',
     icon: <TableOutlined />,
-    label: 'Browse',
+    label: 'Catalog',
   },
   {
     key: '/dq',
@@ -41,6 +41,13 @@ export function Layout() {
     navigate(key)
   }
 
+  // Determine selected menu key - catalog paths should highlight the Catalog menu item
+  const getSelectedKey = () => {
+    if (location.pathname === '/') return '/'
+    if (location.pathname.startsWith('/catalog')) return '/catalog'
+    return location.pathname
+  }
+
   return (
     <AntLayout style={{ minHeight: '100vh' }}>
       <Sider theme="light" width={200}>
@@ -59,7 +66,7 @@ export function Layout() {
         </div>
         <Menu
           mode="inline"
-          selectedKeys={[location.pathname]}
+          selectedKeys={[getSelectedKey()]}
           items={menuItems}
           onClick={handleMenuClick}
           style={{ borderRight: 0 }}

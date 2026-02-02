@@ -2,6 +2,7 @@ import { Table, Tag, Typography } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import { useNavigate } from 'react-router-dom'
 import type { CatalogObjectSummary } from '../api/types'
+import { getObjectUrl } from '../utils/urls'
 
 const { Text } = Typography
 
@@ -89,7 +90,7 @@ export function ObjectTable({ objects, loading, pagination }: ObjectTableProps) 
         showTotal: (total) => `${total} objects`,
       } : false}
       onRow={(record) => ({
-        onClick: () => navigate(`/objects/${record.id}`),
+        onClick: () => navigate(getObjectUrl(record)),
         style: { cursor: 'pointer' },
       })}
     />

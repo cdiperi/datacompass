@@ -5,6 +5,7 @@ import { SearchOutlined, TableOutlined, DatabaseOutlined } from '@ant-design/ico
 import { useDebouncedSearch } from '../hooks/useSearch'
 import { useSources } from '../hooks/useSources'
 import type { SearchResult } from '../api/types'
+import { getObjectUrl } from '../utils/urls'
 
 const { Title, Text } = Typography
 
@@ -60,7 +61,7 @@ export function SearchResultsPage() {
   }
 
   const handleResultClick = (result: SearchResult) => {
-    navigate(`/objects/${result.id}`)
+    navigate(getObjectUrl(result))
   }
 
   const renderHighlight = (text: string, highlights: Record<string, string>, field: string) => {

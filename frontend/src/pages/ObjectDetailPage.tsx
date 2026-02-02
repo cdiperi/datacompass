@@ -4,12 +4,14 @@ import { HomeOutlined, PartitionOutlined, TableOutlined } from '@ant-design/icon
 import { useObject } from '../hooks/useObjects'
 import { ObjectDetail } from '../components/ObjectDetail'
 import { LineageList } from '../components/LineageList'
+import { paramsToFqn, getSourceUrl, getSchemaUrl } from '../utils/urls'
 
 const { Title } = Typography
 
 export function ObjectDetailPage() {
-  const { id } = useParams<{ id: string }>()
-  const { data: object, isLoading, error } = useObject(id || '')
+  const { source, schema, object } = useParams<{ source: string; schema: string; object: string }>()
+  const fqn = paramsToFqn(source!, schema!, object!)
+  const { data: objectData, isLoading, error } = useObject(fqn)
 
   if (isLoading) {
     return (
@@ -34,7 +36,7 @@ export function ObjectDetailPage() {
     )
   }
 
-  if (!object) {
+  if (!objectData) {
     return (
       <Alert
         type="warning"
@@ -53,7 +55,7 @@ export function ObjectDetailPage() {
           Details
         </span>
       ),
-      children: <ObjectDetail object={object} />,
+      children: <ObjectDetail object={objectData} />,
     },
     {
       key: 'lineage',
@@ -63,7 +65,7 @@ export function ObjectDetailPage() {
           Lineage
         </span>
       ),
-      children: <LineageList objectId={object.id} />,
+      children: <LineageList objectId={objectData.id} />,
     },
   ]
 
@@ -73,15 +75,15 @@ export function ObjectDetailPage() {
         style={{ marginBottom: 16 }}
         items={[
           { title: <Link to="/"><HomeOutlined /></Link> },
-          { title: <Link to="/browse">Browse</Link> },
-          { title: object.source_name },
-          { title: object.schema_name },
-          { title: object.object_name },
+          { title: <Link to="/catalog">Catalog</Link> },
+          { title: <Link to={getSourceUrl(objectData.source_name)}>{objectData.source_name}</Link> },
+          { title: <Link to={getSchemaUrl(objectData.source_name, objectData.schema_name)}>{objectData.schema_name}</Link> },
+          { title: objectData.object_name },
         ]}
       />
 
       <Title level={2}>
-        {object.object_name}
+        {objectData.object_name}
       </Title>
 
       <Tabs defaultActiveKey="details" items={tabItems} />

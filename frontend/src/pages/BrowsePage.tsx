@@ -1,21 +1,26 @@
 import { useState, useMemo } from 'react'
-import { Typography, Select, Space, Alert } from 'antd'
-import { useSearchParams } from 'react-router-dom'
+import { Typography, Select, Space, Alert, Breadcrumb } from 'antd'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { HomeOutlined } from '@ant-design/icons'
 import { useObjects } from '../hooks/useObjects'
 import { useSources } from '../hooks/useSources'
 import { ObjectTable } from '../components/ObjectTable'
+import { getSourceUrl, getSchemaUrl } from '../utils/urls'
 
 const { Title } = Typography
 
 const objectTypes = ['TABLE', 'VIEW', 'MATERIALIZED_VIEW', 'FUNCTION']
 
 export function BrowsePage() {
-  const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const { source: sourceParam, schema: schemaParam } = useParams<{ source?: string; schema?: string }>()
 
-  // Get filter values from URL params
-  const sourceFilter = searchParams.get('source') || undefined
-  const typeFilter = searchParams.get('object_type') || undefined
-  const schemaFilter = searchParams.get('schema') || undefined
+  // Decode URL params
+  const sourceFilter = sourceParam ? decodeURIComponent(sourceParam) : undefined
+  const schemaFilter = schemaParam ? decodeURIComponent(schemaParam) : undefined
+
+  // Type filter state (not in URL since it's a secondary filter)
+  const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined)
 
   // Pagination state
   const [page, setPage] = useState(1)
@@ -36,15 +41,29 @@ export function BrowsePage() {
     return uniqueSchemas.sort()
   }, [objects])
 
-  const handleFilterChange = (key: string, value: string | undefined) => {
-    const newParams = new URLSearchParams(searchParams)
+  const handleSourceChange = (value: string | undefined) => {
     if (value) {
-      newParams.set(key, value)
+      navigate(getSourceUrl(value))
     } else {
-      newParams.delete(key)
+      navigate('/catalog')
     }
-    setSearchParams(newParams)
-    setPage(1) // Reset to first page on filter change
+    setPage(1)
+  }
+
+  const handleSchemaChange = (value: string | undefined) => {
+    if (value && sourceFilter) {
+      navigate(getSchemaUrl(sourceFilter, value))
+    } else if (sourceFilter) {
+      navigate(getSourceUrl(sourceFilter))
+    } else {
+      navigate('/catalog')
+    }
+    setPage(1)
+  }
+
+  const handleTypeChange = (value: string | undefined) => {
+    setTypeFilter(value)
+    setPage(1)
   }
 
   const handlePageChange = (newPage: number, newPageSize: number) => {
@@ -72,9 +91,33 @@ export function BrowsePage() {
     ? objects.slice((page - 1) * pageSize, page * pageSize)
     : []
 
+  // Build breadcrumb items
+  const breadcrumbItems = [
+    { title: <Link to="/"><HomeOutlined /></Link> },
+    { title: sourceFilter ? <Link to="/catalog">Catalog</Link> : 'Catalog' },
+  ]
+  if (sourceFilter) {
+    breadcrumbItems.push({
+      title: schemaFilter ? <Link to={getSourceUrl(sourceFilter)}>{sourceFilter}</Link> : sourceFilter,
+    })
+  }
+  if (schemaFilter) {
+    breadcrumbItems.push({ title: schemaFilter })
+  }
+
+  // Determine page title
+  let pageTitle = 'Browse Catalog'
+  if (schemaFilter && sourceFilter) {
+    pageTitle = `${sourceFilter}.${schemaFilter}`
+  } else if (sourceFilter) {
+    pageTitle = sourceFilter
+  }
+
   return (
     <div>
-      <Title level={2}>Browse Catalog</Title>
+      <Breadcrumb style={{ marginBottom: 16 }} items={breadcrumbItems} />
+
+      <Title level={2}>{pageTitle}</Title>
 
       <Space wrap style={{ marginBottom: 16 }}>
         <Select
@@ -82,24 +125,25 @@ export function BrowsePage() {
           allowClear
           style={{ width: 200 }}
           value={sourceFilter}
-          onChange={(value) => handleFilterChange('source', value)}
+          onChange={handleSourceChange}
           options={sources?.map((s) => ({ value: s.name, label: s.display_name || s.name }))}
-        />
-        <Select
-          placeholder="Filter by type"
-          allowClear
-          style={{ width: 200 }}
-          value={typeFilter}
-          onChange={(value) => handleFilterChange('object_type', value)}
-          options={objectTypes.map((t) => ({ value: t, label: t }))}
         />
         <Select
           placeholder="Filter by schema"
           allowClear
           style={{ width: 200 }}
           value={schemaFilter}
-          onChange={(value) => handleFilterChange('schema', value)}
+          onChange={handleSchemaChange}
           options={schemas.map((s) => ({ value: s, label: s }))}
+          disabled={!sourceFilter}
+        />
+        <Select
+          placeholder="Filter by type"
+          allowClear
+          style={{ width: 200 }}
+          value={typeFilter}
+          onChange={handleTypeChange}
+          options={objectTypes.map((t) => ({ value: t, label: t }))}
         />
       </Space>
 

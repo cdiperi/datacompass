@@ -18,6 +18,7 @@ import {
 import type { ColumnsType } from 'antd/es/table'
 import { useLineage } from '../hooks/useLineage'
 import type { LineageNode, ExternalNode } from '../api/types'
+import { getObjectUrl } from '../utils/urls'
 
 const { Text } = Typography
 
@@ -62,7 +63,7 @@ export function LineageList({ objectId }: LineageListProps) {
         }
         const node = record as LineageNode
         return (
-          <Link to={`/objects/${node.id}`}>
+          <Link to={getObjectUrl(node)}>
             {node.source_name}.{node.schema_name}.{node.object_name}
           </Link>
         )

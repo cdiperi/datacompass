@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom'
 import type { DQBreach, DQBreachStatus, DQPriority } from '../api/types'
 import { useDQBreaches, useUpdateBreachStatus } from '../hooks/useDQ'
 import { DQDirectionBadge, DQPriorityBadge, DQStatusBadge } from './DQStatusBadge'
+import { getObjectUrl } from '../utils/urls'
 
 const { Text } = Typography
 
@@ -75,7 +76,7 @@ export function BreachTable({
       title: 'Object',
       key: 'object',
       render: (_, record) => (
-        <Link to={`/objects/${record.object_id}`}>
+        <Link to={getObjectUrl(record)}>
           <Text code>{record.schema_name}.{record.object_name}</Text>
         </Link>
       ),
