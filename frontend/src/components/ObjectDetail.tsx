@@ -87,6 +87,15 @@ export function ObjectDetail({ object }: ObjectDetailProps) {
       },
     },
     {
+      title: 'FK References',
+      key: 'foreign_key',
+      render: (_, record) => {
+        if (!record.foreign_key) return '-'
+        const fk = record.foreign_key
+        return `${fk.references_schema}.${fk.references_table}.${fk.references_column}`
+      },
+    },
+    {
       title: 'Description',
       dataIndex: 'description',
       key: 'description',

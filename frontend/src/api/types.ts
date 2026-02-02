@@ -29,11 +29,19 @@ export interface DataSourceDetail extends DataSource {
 // Column Types
 // =============================================================================
 
+export interface ForeignKeyConstraint {
+  constraint_name: string
+  references_schema: string
+  references_table: string
+  references_column: string
+}
+
 export interface ColumnSummary {
   column_name: string
   data_type: string | null
   nullable: boolean | null
   description: string | null
+  foreign_key: ForeignKeyConstraint | null
 }
 
 // =============================================================================

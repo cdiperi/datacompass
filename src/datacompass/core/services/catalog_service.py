@@ -13,6 +13,7 @@ from datacompass.core.models import (
     CatalogObjectDetail,
     CatalogObjectSummary,
     ColumnSummary,
+    ForeignKeyConstraint,
     ScanResult,
     ScanStats,
 )
@@ -114,11 +115,12 @@ class CatalogService:
                         stats.objects_updated += 1
 
                 # Fetch columns for all discovered objects
+                # Use constraint-enriched columns if available (includes FK metadata)
                 object_keys = [
                     (obj_data["schema_name"], obj_data["object_name"])
                     for obj_data in objects
                 ]
-                columns = await adapter.get_columns(object_keys)
+                columns = await self._get_columns_from_adapter(adapter, object_keys)
 
                 # Group columns by object
                 columns_by_object: dict[tuple[str, str], list[dict[str, Any]]] = {}
@@ -313,10 +315,30 @@ class CatalogService:
                     description=col.source_metadata.get("description")
                     if col.source_metadata
                     else None,
+                    foreign_key=self._extract_fk_constraint(col.source_metadata),
                 )
                 for col in columns
             ],
         )
+
+    def _extract_fk_constraint(
+        self, source_metadata: dict[str, Any] | None
+    ) -> ForeignKeyConstraint | None:
+        """Extract foreign key constraint from column source_metadata.
+
+        Args:
+            source_metadata: Column's source_metadata dict.
+
+        Returns:
+            ForeignKeyConstraint if present, None otherwise.
+        """
+        if not source_metadata:
+            return None
+        constraints = source_metadata.get("constraints", {})
+        fk = constraints.get("foreign_key")
+        if not fk:
+            return None
+        return ForeignKeyConstraint(**fk)
 
     def _resolve_object(self, identifier: str) -> CatalogObject | None:
         """Resolve an object identifier to a CatalogObject.
@@ -357,44 +379,17 @@ class CatalogService:
     async def _extract_lineage(self, adapter: Any, source_id: int) -> None:
         """Extract lineage from adapter if supported.
 
-        Calls adapter's get_foreign_keys() and get_view_dependencies() methods
-        if they exist, and stores the relationships in the dependency table.
+        Calls adapter's get_view_dependencies() method if it exists, and stores
+        the relationships in the dependency table.
+
+        Note: Foreign key constraints are stored as column metadata (in
+        source_metadata.constraints.foreign_key), not as lineage dependencies.
 
         Args:
             adapter: The source adapter instance.
             source_id: ID of the data source.
         """
         dependencies: list[dict[str, Any]] = []
-
-        # Extract foreign key relationships
-        try:
-            if hasattr(adapter, "get_foreign_keys") and callable(adapter.get_foreign_keys):
-                fks = await adapter.get_foreign_keys()
-                if isinstance(fks, list):
-                    for fk in fks:
-                        # Resolve source object (the table with the FK)
-                        source_obj = self.object_repo.get_by_qualified_name(
-                            source_id=source_id,
-                            schema_name=fk["source_schema"],
-                            object_name=fk["source_table"],
-                        )
-                        # Resolve target object (the referenced table)
-                        target_obj = self.object_repo.get_by_qualified_name(
-                            source_id=source_id,
-                            schema_name=fk["target_schema"],
-                            object_name=fk["target_table"],
-                        )
-
-                        if source_obj and target_obj:
-                            dependencies.append({
-                                "object_id": source_obj.id,
-                                "target_id": target_obj.id,
-                                "dependency_type": "DIRECT",
-                                "confidence": "HIGH",
-                            })
-        except (TypeError, AttributeError):
-            # Adapter doesn't support foreign key extraction
-            pass
 
         # Extract view dependencies
         try:
@@ -438,3 +433,31 @@ class CatalogService:
                 dependencies=dependencies,
                 parsing_source="source_metadata",
             )
+
+    async def _get_columns_from_adapter(
+        self, adapter: Any, object_keys: list[tuple[str, str]]
+    ) -> list[dict[str, Any]]:
+        """Get columns from adapter, using constraint-enriched method if available.
+
+        Tries to use get_columns_with_constraints() if the adapter provides it
+        (which includes FK constraint info in source_metadata), otherwise falls
+        back to get_columns().
+
+        Args:
+            adapter: The source adapter instance.
+            object_keys: List of (schema_name, object_name) tuples.
+
+        Returns:
+            List of column metadata dicts.
+        """
+        try:
+            get_with_constraints = getattr(
+                adapter, "get_columns_with_constraints", None
+            )
+            if get_with_constraints is not None and callable(get_with_constraints):
+                result: list[dict[str, Any]] = await get_with_constraints(object_keys)
+                return result
+        except (TypeError, AttributeError):
+            pass
+        columns: list[dict[str, Any]] = await adapter.get_columns(object_keys)
+        return columns

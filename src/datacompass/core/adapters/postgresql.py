@@ -369,6 +369,42 @@ class PostgreSQLAdapter(SourceAdapter):
 
         return base_type
 
+    async def get_columns_with_constraints(
+        self,
+        objects: list[tuple[str, str]],
+    ) -> list[dict[str, Any]]:
+        """Fetch columns with FK constraints merged into source_metadata.
+
+        Args:
+            objects: List of (schema_name, object_name) tuples.
+
+        Returns:
+            List of column metadata dicts with FK info in source_metadata.
+        """
+        columns = await self.get_columns(objects)
+        fks = await self.get_foreign_keys()
+
+        # Build lookup: (schema, table, column) -> FK info
+        fk_lookup: dict[tuple[str, str, str], dict[str, Any]] = {
+            (fk["source_schema"], fk["source_table"], fk["source_column"]): {
+                "constraint_name": fk["constraint_name"],
+                "references_schema": fk["target_schema"],
+                "references_table": fk["target_table"],
+                "references_column": fk["target_column"],
+            }
+            for fk in fks
+        }
+
+        # Enrich columns with FK info
+        for col in columns:
+            key = (col["schema_name"], col["object_name"], col["column_name"])
+            if key in fk_lookup:
+                if col.get("source_metadata") is None:
+                    col["source_metadata"] = {}
+                col["source_metadata"]["constraints"] = {"foreign_key": fk_lookup[key]}
+
+        return columns
+
     async def get_foreign_keys(self) -> list[dict[str, Any]]:
         """Extract foreign key relationships for lineage.
 

@@ -51,6 +51,15 @@ class DataSourceDetail(DataSourceResponse):
 # =============================================================================
 
 
+class ForeignKeyConstraint(BaseModel):
+    """Foreign key constraint information."""
+
+    constraint_name: str
+    references_schema: str
+    references_table: str
+    references_column: str
+
+
 class ColumnResponse(BaseModel):
     """Schema for column responses."""
 
@@ -83,6 +92,7 @@ class ColumnSummary(BaseModel):
     data_type: str | None = None
     nullable: bool | None = None
     description: str | None = None
+    foreign_key: ForeignKeyConstraint | None = None
 
 
 # =============================================================================
