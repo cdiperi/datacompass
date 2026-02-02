@@ -1,0 +1,110 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "datacompass"
+version = "0.1.0"
+description = "Terminal-first metadata catalog with data quality monitoring and lineage visualization"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [
+    { name = "Data Compass Team" }
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Database",
+    "Topic :: Software Development :: Documentation",
+]
+
+dependencies = [
+    "typer>=0.9.0",
+    "rich>=13.0.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "sqlalchemy>=2.0.0",
+    "aiosqlite>=0.19.0",
+    "alembic>=1.13.0",
+    "pyyaml>=6.0.0",
+    "fastapi>=0.109.0",
+    "uvicorn[standard]>=0.27.0",
+]
+
+[project.optional-dependencies]
+databricks = [
+    "databricks-sql-connector>=3.0.0",
+]
+azure = [
+    "azure-identity>=1.15.0",
+]
+scheduler = [
+    "APScheduler>=3.10.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "mypy>=1.0.0",
+    "httpx>=0.26.0",
+]
+all = [
+    "datacompass[databricks,azure,scheduler]",
+]
+
+[project.scripts]
+datacompass = "datacompass.cli.main:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/datacompass"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "ARG001", # unused function argument - CLI commands often have unused params for future phases
+    "ARG002", # unused method argument - fixtures often unused in test signatures
+    "SIM117", # use single with statement - nested with is clearer for test mocking contexts
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["datacompass"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
