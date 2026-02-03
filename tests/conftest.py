@@ -222,3 +222,105 @@ access_token: test-token-12345
 """
     )
     return config_file
+
+
+# =============================================================================
+# Auth fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def admin_user(test_db: Session):
+    """Create a test admin user with superuser privileges."""
+    from datacompass.core.models.auth import UserCreate
+    from datacompass.core.services.auth_service import AuthService
+
+    # Enable auth temporarily
+    old_mode = os.environ.get("DATACOMPASS_AUTH_MODE")
+    os.environ["DATACOMPASS_AUTH_MODE"] = "local"
+
+    from datacompass.config.settings import get_settings
+    get_settings.cache_clear()
+
+    try:
+        service = AuthService(test_db)
+        user = service.create_local_user(UserCreate(
+            email="admin@test.example.com",
+            password="adminpassword",
+            display_name="Admin User",
+            is_superuser=True,
+        ))
+        test_db.commit()
+        yield user
+    finally:
+        if old_mode is not None:
+            os.environ["DATACOMPASS_AUTH_MODE"] = old_mode
+        else:
+            os.environ.pop("DATACOMPASS_AUTH_MODE", None)
+        get_settings.cache_clear()
+
+
+@pytest.fixture
+def regular_user(test_db: Session):
+    """Create a test regular user without superuser privileges."""
+    from datacompass.core.models.auth import UserCreate
+    from datacompass.core.services.auth_service import AuthService
+
+    # Enable auth temporarily
+    old_mode = os.environ.get("DATACOMPASS_AUTH_MODE")
+    os.environ["DATACOMPASS_AUTH_MODE"] = "local"
+
+    from datacompass.config.settings import get_settings
+    get_settings.cache_clear()
+
+    try:
+        service = AuthService(test_db)
+        user = service.create_local_user(UserCreate(
+            email="user@test.example.com",
+            password="userpassword",
+            display_name="Regular User",
+            is_superuser=False,
+        ))
+        test_db.commit()
+        yield user
+    finally:
+        if old_mode is not None:
+            os.environ["DATACOMPASS_AUTH_MODE"] = old_mode
+        else:
+            os.environ.pop("DATACOMPASS_AUTH_MODE", None)
+        get_settings.cache_clear()
+
+
+@pytest.fixture
+def api_key(test_db: Session, regular_user):
+    """Create a test API key and return (APIKey, raw_key) tuple."""
+    from datacompass.core.services.auth_service import AuthService
+
+    # Enable auth temporarily
+    old_mode = os.environ.get("DATACOMPASS_AUTH_MODE")
+    os.environ["DATACOMPASS_AUTH_MODE"] = "local"
+
+    from datacompass.config.settings import get_settings
+    get_settings.cache_clear()
+
+    try:
+        service = AuthService(test_db)
+        api_key_created = service.create_api_key(
+            user=regular_user,
+            name="Test API Key",
+            scopes=["read", "write"],
+        )
+        test_db.commit()
+
+        # Get the actual APIKey model from the database
+        from datacompass.core.repositories.auth import APIKeyRepository
+        repo = APIKeyRepository(test_db)
+        api_key_model = repo.get_by_id(api_key_created.id)
+
+        yield (api_key_model, api_key_created.key)
+    finally:
+        if old_mode is not None:
+            os.environ["DATACOMPASS_AUTH_MODE"] = old_mode
+        else:
+            os.environ.pop("DATACOMPASS_AUTH_MODE", None)
+        get_settings.cache_clear()

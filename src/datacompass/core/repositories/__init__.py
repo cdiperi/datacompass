@@ -12,6 +12,12 @@ from datacompass.core.repositories.scheduling import (
     SchedulingRepository,
 )
 from datacompass.core.repositories.search import SearchRepository, SearchResult
+from datacompass.core.repositories.auth import (
+    APIKeyRepository,
+    RefreshTokenRepository,
+    SessionRepository,
+    UserRepository,
+)
 
 __all__ = [
     "BaseRepository",
@@ -25,4 +31,9 @@ __all__ = [
     "NotificationRepository",
     "SearchRepository",
     "SearchResult",
+    # Auth repositories
+    "UserRepository",
+    "APIKeyRepository",
+    "SessionRepository",
+    "RefreshTokenRepository",
 ]

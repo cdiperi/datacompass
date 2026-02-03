@@ -90,6 +90,21 @@ from datacompass.core.models.scheduling import (
     ScheduleUpdate,
     SchedulerHubSummary,
 )
+from datacompass.core.models.auth import (
+    APIKey,
+    APIKeyCreate,
+    APIKeyCreated,
+    APIKeyResponse,
+    AuthStatusResponse,
+    LoginRequest,
+    RefreshToken,
+    RefreshTokenRequest,
+    Session,
+    TokenResponse,
+    User,
+    UserCreate,
+    UserResponse,
+)
 
 __all__ = [
     # SQLAlchemy models
@@ -181,4 +196,18 @@ __all__ = [
     "NotificationRuleResponse",
     "NotificationRuleDetailResponse",
     "NotificationLogResponse",
+    # Phase 9 schemas (Authentication)
+    "User",
+    "APIKey",
+    "Session",
+    "RefreshToken",
+    "UserCreate",
+    "UserResponse",
+    "APIKeyCreate",
+    "APIKeyResponse",
+    "APIKeyCreated",
+    "LoginRequest",
+    "TokenResponse",
+    "RefreshTokenRequest",
+    "AuthStatusResponse",
 ]

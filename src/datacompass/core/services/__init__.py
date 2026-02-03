@@ -59,6 +59,16 @@ from datacompass.core.services.source_service import (
     SourceService,
     SourceServiceError,
 )
+from datacompass.core.services.auth_service import (
+    APIKeyNotFoundError,
+    AuthDisabledError,
+    AuthService,
+    AuthServiceError,
+    InvalidCredentialsError,
+    TokenExpiredError,
+    UserExistsError,
+    UserNotFoundError,
+)
 
 __all__ = [
     # Source service
@@ -110,4 +120,13 @@ __all__ = [
     "substitute_env_vars",
     "mask_sensitive_values",
     "ConfigLoadError",
+    # Auth service
+    "AuthService",
+    "AuthServiceError",
+    "AuthDisabledError",
+    "InvalidCredentialsError",
+    "UserNotFoundError",
+    "UserExistsError",
+    "APIKeyNotFoundError",
+    "TokenExpiredError",
 ]

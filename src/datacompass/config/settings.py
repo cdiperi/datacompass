@@ -1,5 +1,6 @@
 """Application configuration settings."""
 
+import secrets
 from functools import lru_cache
 from pathlib import Path
 from typing import Literal
@@ -48,6 +49,28 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = Field(
         default="INFO",
         description="Logging level",
+    )
+
+    # Authentication
+    auth_mode: Literal["disabled", "local", "oidc", "ldap"] = Field(
+        default="disabled",
+        description="Authentication mode: disabled, local, oidc, or ldap",
+    )
+    auth_secret_key: str = Field(
+        default_factory=lambda: secrets.token_urlsafe(32),
+        description="Secret key for JWT signing (change in production)",
+    )
+    auth_access_token_expire_minutes: int = Field(
+        default=30,
+        description="Access token expiration time in minutes",
+    )
+    auth_refresh_token_expire_days: int = Field(
+        default=7,
+        description="Refresh token expiration time in days",
+    )
+    auth_auto_register: bool = Field(
+        default=False,
+        description="Automatically register users on first login (for OIDC/LDAP)",
     )
 
     @property
