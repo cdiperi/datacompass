@@ -58,6 +58,98 @@ Override with the `DATACOMPASS_DATA_DIR` environment variable:
 export DATACOMPASS_DATA_DIR=/custom/path
 ```
 
+## Authentication
+
+Data Compass supports optional authentication to secure access to your catalog.
+
+### Auth Modes
+
+| Mode | Description | Use Case |
+|------|-------------|----------|
+| `disabled` | No authentication (default) | Development, single-user |
+| `local` | Email/password authentication | Small teams, self-hosted |
+| `oidc` | Enterprise SSO via OAuth2/OIDC | Enterprise (coming soon) |
+
+### Enabling Local Authentication
+
+Set the auth mode via environment variable:
+
+```bash
+export DATACOMPASS_AUTH_MODE=local
+export DATACOMPASS_AUTH_SECRET_KEY="your-secure-secret-key"
+```
+
+### Creating the First User
+
+When local auth is enabled, create a superuser:
+
+```bash
+datacompass auth user create admin@example.com --password --superuser
+```
+
+### Logging In (CLI)
+
+```bash
+# Log in with email/password
+datacompass auth login --email admin@example.com --password
+
+# Check who you're logged in as
+datacompass auth whoami
+
+# Log out
+datacompass auth logout
+```
+
+### Creating API Keys
+
+API keys are useful for CI/CD pipelines and automated scripts:
+
+```bash
+# Create an API key
+datacompass auth apikey create "CI/CD Key" --scopes read,write --expires-days 90
+
+# The key is shown once - save it securely!
+# Use it via environment variable
+export DATACOMPASS_API_KEY=dc_abc123...
+
+# Or via header in API calls
+curl -H "X-API-Key: dc_abc123..." http://localhost:8000/api/v1/sources
+```
+
+### Managing Users (Admin)
+
+Superusers can manage other users:
+
+```bash
+# List users
+datacompass auth user list
+
+# Create a user
+datacompass auth user create user@example.com --password
+
+# Disable a user
+datacompass auth user disable user@example.com
+
+# Enable a user
+datacompass auth user enable user@example.com
+
+# Grant superuser privileges
+datacompass auth user set-superuser user@example.com
+```
+
+### Web UI Authentication
+
+When auth is enabled, the web UI will display a login page. Users must authenticate before accessing the catalog.
+
+### Auth Disabled Mode
+
+By default (`DATACOMPASS_AUTH_MODE=disabled`), no authentication is required. This is suitable for:
+- Local development
+- Single-user deployments
+- Trusted internal networks
+
+---
+
 ## Configuring Data Sources
 
 ### Source Configuration Files

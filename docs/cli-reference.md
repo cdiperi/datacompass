@@ -477,6 +477,367 @@ datacompass adapters list
 
 ---
 
+## auth
+
+Authentication management commands.
+
+### auth login
+
+Log in to Data Compass.
+
+```bash
+datacompass auth login [options]
+```
+
+**Options:**
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--email` | `-e` | Email address for local auth |
+| `--password` | `-p` | Prompt for password (local auth) |
+| `--format` | `-f` | Output format: `json` or `table` |
+
+**Examples:**
+
+```bash
+# Local authentication (prompts for password)
+datacompass auth login --email user@example.com --password
+
+# Check login status
+datacompass auth whoami
+```
+
+**Exit codes:**
+- `0`: Login successful
+- `1`: Authentication failed
+
+---
+
+### auth logout
+
+Log out and clear stored credentials.
+
+```bash
+datacompass auth logout
+```
+
+**Example:**
+
+```bash
+datacompass auth logout
+```
+
+---
+
+### auth whoami
+
+Show the current authenticated user.
+
+```bash
+datacompass auth whoami [options]
+```
+
+**Options:**
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--format` | `-f` | Output format: `json` or `table` |
+
+**Example:**
+
+```bash
+datacompass auth whoami
+```
+
+**Output:**
+
+```json
+{
+  "authenticated": true,
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "display_name": "John Doe",
+    "is_superuser": false
+  }
+}
+```
+
+---
+
+### auth status
+
+Show authentication configuration status.
+
+```bash
+datacompass auth status [options]
+```
+
+**Options:**
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--format` | `-f` | Output format: `json` or `table` |
+
+**Example:**
+
+```bash
+datacompass auth status
+```
+
+**Output:**
+
+```json
+{
+  "auth_mode": "local",
+  "auth_enabled": true
+}
+```
+
+---
+
+### auth user create
+
+Create a new user (superuser only).
+
+```bash
+datacompass auth user create <email> [options]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `email` | User email address |
+
+**Options:**
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--password` | `-p` | Prompt for password |
+| `--display-name` | `-d` | Display name |
+| `--superuser` | | Create as superuser |
+| `--format` | `-f` | Output format: `json` or `table` |
+
+**Example:**
+
+```bash
+datacompass auth user create admin@example.com --password --superuser
+```
+
+---
+
+### auth user list
+
+List all users (superuser only).
+
+```bash
+datacompass auth user list [options]
+```
+
+**Options:**
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--include-inactive` | | Include disabled users |
+| `--format` | `-f` | Output format: `json` or `table` |
+
+**Example:**
+
+```bash
+datacompass auth user list --format table
+```
+
+---
+
+### auth user show
+
+Show user details (superuser only).
+
+```bash
+datacompass auth user show <email> [options]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `email` | User email address |
+
+**Options:**
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--format` | `-f` | Output format: `json` or `table` |
+
+**Example:**
+
+```bash
+datacompass auth user show user@example.com
+```
+
+---
+
+### auth user disable
+
+Disable a user account (superuser only).
+
+```bash
+datacompass auth user disable <email>
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `email` | User email address |
+
+**Example:**
+
+```bash
+datacompass auth user disable user@example.com
+```
+
+---
+
+### auth user enable
+
+Enable a user account (superuser only).
+
+```bash
+datacompass auth user enable <email>
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `email` | User email address |
+
+**Example:**
+
+```bash
+datacompass auth user enable user@example.com
+```
+
+---
+
+### auth user set-superuser
+
+Set or remove superuser status (superuser only).
+
+```bash
+datacompass auth user set-superuser <email> [options]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `email` | User email address |
+
+**Options:**
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--remove` | | Remove superuser status |
+
+**Examples:**
+
+```bash
+# Grant superuser
+datacompass auth user set-superuser user@example.com
+
+# Revoke superuser
+datacompass auth user set-superuser user@example.com --remove
+```
+
+---
+
+### auth apikey create
+
+Create a new API key.
+
+```bash
+datacompass auth apikey create <name> [options]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `name` | Name for the API key |
+
+**Options:**
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--scopes` | `-s` | Comma-separated scopes (default: `read`) |
+| `--expires-days` | | Days until expiration (1-365) |
+| `--format` | `-f` | Output format: `json` or `table` |
+
+**Examples:**
+
+```bash
+# Create a read-only key
+datacompass auth apikey create "Read-only Key"
+
+# Create a key with write access
+datacompass auth apikey create "CI/CD Key" --scopes read,write
+
+# Create an expiring key
+datacompass auth apikey create "Temp Key" --expires-days 30
+```
+
+**Note:** The full key is only shown once. Store it securely.
+
+---
+
+### auth apikey list
+
+List your API keys.
+
+```bash
+datacompass auth apikey list [options]
+```
+
+**Options:**
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--include-inactive` | | Include revoked keys |
+| `--format` | `-f` | Output format: `json` or `table` |
+
+**Example:**
+
+```bash
+datacompass auth apikey list --format table
+```
+
+---
+
+### auth apikey revoke
+
+Revoke an API key.
+
+```bash
+datacompass auth apikey revoke <key_id>
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `key_id` | API key ID |
+
+**Example:**
+
+```bash
+datacompass auth apikey revoke 1
+```
+
+---
+
 ## dq
 
 Data quality monitoring commands.
@@ -1418,6 +1779,10 @@ datacompass notify apply notifications.yaml
 | `DATACOMPASS_CONFIG_FILE` | `{data_dir}/config.yaml` | Global config file path |
 | `DATACOMPASS_DEFAULT_FORMAT` | `json` | Default output format |
 | `DATACOMPASS_LOG_LEVEL` | `INFO` | Log level (DEBUG, INFO, WARNING, ERROR) |
+| `DATACOMPASS_AUTH_MODE` | `disabled` | Auth mode: `disabled`, `local`, `oidc` |
+| `DATACOMPASS_AUTH_SECRET_KEY` | (auto) | JWT signing key (change in production) |
+| `DATACOMPASS_API_KEY` | | API key for CLI authentication |
+| `DATACOMPASS_ACCESS_TOKEN` | | Access token for CLI authentication |
 
 ---
 

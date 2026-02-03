@@ -21,7 +21,27 @@ http://localhost:8000/api/v1/objects
 
 ### Authentication
 
-Currently no authentication is required. Authentication will be added in Phase 9.
+Authentication is configurable via the `DATACOMPASS_AUTH_MODE` environment variable:
+
+| Mode | Description |
+|------|-------------|
+| `disabled` | No authentication required (default) |
+| `local` | Email/password authentication |
+| `oidc` | Enterprise SSO via OAuth2/OIDC (coming soon) |
+
+When authentication is enabled, requests must include one of:
+
+**Bearer Token (JWT):**
+```
+Authorization: Bearer <access_token>
+```
+
+**API Key:**
+```
+X-API-Key: <api_key>
+```
+
+Tokens are obtained via the `/api/v1/auth/login` endpoint.
 
 ### Response Format
 
@@ -70,6 +90,299 @@ Health check endpoint.
   "version": "0.1.0"
 }
 ```
+
+---
+
+## Authentication
+
+Authentication endpoints for login, token management, and user administration.
+
+### GET /api/v1/auth/status
+
+Get authentication configuration status. Does not require authentication.
+
+**Response:** `200 OK`
+
+```json
+{
+  "auth_mode": "local",
+  "is_authenticated": false,
+  "user": null
+}
+```
+
+---
+
+### POST /api/v1/auth/login
+
+Authenticate with email and password.
+
+**Request Body:**
+
+```json
+{
+  "email": "user@example.com",
+  "password": "secretpassword"
+}
+```
+
+**Response:** `200 OK`
+
+```json
+{
+  "access_token": "eyJ...",
+  "refresh_token": "...",
+  "token_type": "bearer",
+  "expires_in": 1800
+}
+```
+
+**Errors:**
+- `400 Bad Request`: Authentication is disabled
+- `401 Unauthorized`: Invalid credentials
+
+---
+
+### POST /api/v1/auth/refresh
+
+Refresh access and refresh tokens.
+
+**Request Body:**
+
+```json
+{
+  "refresh_token": "..."
+}
+```
+
+**Response:** `200 OK`
+
+```json
+{
+  "access_token": "eyJ...",
+  "refresh_token": "...",
+  "token_type": "bearer",
+  "expires_in": 1800
+}
+```
+
+**Errors:**
+- `400 Bad Request`: Authentication is disabled
+- `401 Unauthorized`: Invalid or expired refresh token
+
+---
+
+### GET /api/v1/auth/me
+
+Get current authenticated user information.
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Response:** `200 OK`
+
+```json
+{
+  "auth_mode": "local",
+  "is_authenticated": true,
+  "user": {
+    "id": 1,
+    "email": "user@example.com",
+    "username": null,
+    "display_name": "John Doe",
+    "is_active": true,
+    "is_superuser": false,
+    "last_login_at": "2025-01-15T10:00:00Z",
+    "created_at": "2025-01-01T00:00:00Z",
+    "updated_at": "2025-01-15T10:00:00Z"
+  }
+}
+```
+
+**Errors:**
+- `401 Unauthorized`: Not authenticated
+
+---
+
+### POST /api/v1/auth/apikeys
+
+Create a new API key for the current user.
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Request Body:**
+
+```json
+{
+  "name": "CI/CD Key",
+  "scopes": ["read", "write"],
+  "expires_days": 90
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `name` | string | Yes | Key name for identification |
+| `scopes` | array | No | Permission scopes |
+| `expires_days` | integer | No | Days until expiration (1-365) |
+
+**Response:** `201 Created`
+
+```json
+{
+  "id": 1,
+  "user_id": 1,
+  "name": "CI/CD Key",
+  "key": "dc_abc123...",
+  "key_prefix": "dc_abc12",
+  "scopes": ["read", "write"],
+  "expires_at": "2025-04-15T00:00:00Z",
+  "created_at": "2025-01-15T00:00:00Z"
+}
+```
+
+**Note:** The full `key` is only returned once at creation. Store it securely.
+
+**Errors:**
+- `400 Bad Request`: Authentication is disabled
+- `401 Unauthorized`: Not authenticated
+
+---
+
+### GET /api/v1/auth/apikeys
+
+List API keys for the current user.
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `include_inactive` | boolean | Include revoked keys (default: false) |
+
+**Response:** `200 OK`
+
+```json
+[
+  {
+    "id": 1,
+    "user_id": 1,
+    "name": "CI/CD Key",
+    "key_prefix": "dc_abc12",
+    "scopes": ["read", "write"],
+    "expires_at": "2025-04-15T00:00:00Z",
+    "last_used_at": "2025-01-15T09:00:00Z",
+    "is_active": true,
+    "created_at": "2025-01-15T00:00:00Z"
+  }
+]
+```
+
+---
+
+### DELETE /api/v1/auth/apikeys/{key_id}
+
+Revoke an API key.
+
+**Headers:** `Authorization: Bearer <token>`
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `key_id` | integer | API key ID |
+
+**Response:** `204 No Content`
+
+**Errors:**
+- `401 Unauthorized`: Not authenticated
+- `404 Not Found`: Key not found or not owned by user
+
+---
+
+### POST /api/v1/auth/users (Superuser Only)
+
+Create a new user.
+
+**Headers:** `Authorization: Bearer <token>` (superuser required)
+
+**Request Body:**
+
+```json
+{
+  "email": "newuser@example.com",
+  "password": "securepassword",
+  "display_name": "New User",
+  "is_superuser": false
+}
+```
+
+**Response:** `201 Created`
+
+**Errors:**
+- `401 Unauthorized`: Not authenticated
+- `403 Forbidden`: Not a superuser
+- `409 Conflict`: User with email already exists
+
+---
+
+### GET /api/v1/auth/users (Superuser Only)
+
+List all users.
+
+**Headers:** `Authorization: Bearer <token>` (superuser required)
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `include_inactive` | boolean | Include disabled users (default: false) |
+
+**Response:** `200 OK`
+
+```json
+[
+  {
+    "id": 1,
+    "email": "admin@example.com",
+    "display_name": "Admin",
+    "is_active": true,
+    "is_superuser": true,
+    "last_login_at": "2025-01-15T10:00:00Z",
+    "created_at": "2025-01-01T00:00:00Z"
+  }
+]
+```
+
+---
+
+### POST /api/v1/auth/users/{email}/disable (Superuser Only)
+
+Disable a user account.
+
+**Response:** `200 OK` - Returns updated user
+
+---
+
+### POST /api/v1/auth/users/{email}/enable (Superuser Only)
+
+Enable a user account.
+
+**Response:** `200 OK` - Returns updated user
+
+---
+
+### POST /api/v1/auth/users/{email}/set-superuser (Superuser Only)
+
+Set or remove superuser status.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `is_superuser` | boolean | New superuser status |
+
+**Response:** `200 OK` - Returns updated user
 
 ---
 
