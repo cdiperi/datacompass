@@ -1770,6 +1770,165 @@ datacompass notify apply notifications.yaml
 
 ---
 
+## usage
+
+Usage metrics commands for tracking object-level statistics.
+
+### usage collect
+
+Collect usage metrics for all objects in a source.
+
+```bash
+datacompass usage collect <source> [options]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `source` | Name of the source to collect metrics from |
+
+**Options:**
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--format` | `-f` | Output format: `json` or `table` |
+
+**Example:**
+
+```bash
+datacompass usage collect prod
+```
+
+**Output (JSON):**
+
+```json
+{
+  "source_name": "prod",
+  "collected_count": 42,
+  "skipped_count": 3,
+  "error_count": 0,
+  "collected_at": "2025-01-15T10:30:00Z"
+}
+```
+
+**Exit codes:**
+- `0`: Collection successful
+- `1`: Source not found or collection error
+
+---
+
+### usage show
+
+Show usage metrics for a specific object.
+
+```bash
+datacompass usage show <object_id> [options]
+```
+
+**Arguments:**
+
+| Argument | Description |
+|----------|-------------|
+| `object_id` | Object identifier (`source.schema.name`) or numeric ID |
+
+**Options:**
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--history` | `-h` | Number of days of history to show |
+| `--limit` | `-l` | Maximum number of records (for history) |
+| `--format` | `-f` | Output format: `json` or `table` |
+
+**Examples:**
+
+```bash
+# Show latest metrics
+datacompass usage show prod.analytics.customers
+
+# Show 30 days of history
+datacompass usage show prod.analytics.customers --history 30
+
+# Limit historical records
+datacompass usage show prod.analytics.customers --history 30 --limit 10
+```
+
+**Output (JSON - latest):**
+
+```json
+{
+  "id": 1,
+  "object_id": 42,
+  "object_name": "customers",
+  "schema_name": "analytics",
+  "source_name": "prod",
+  "collected_at": "2025-01-15T10:30:00Z",
+  "row_count": 1500000,
+  "size_bytes": 524288000,
+  "read_count": 150,
+  "write_count": 5,
+  "last_read_at": "2025-01-15T09:00:00Z",
+  "last_written_at": "2025-01-14T22:00:00Z",
+  "distinct_users": 12,
+  "query_count": 250
+}
+```
+
+**Exit codes:**
+- `0`: Success
+- `1`: Object not found
+
+---
+
+### usage hot
+
+Show the most accessed tables (hot tables).
+
+```bash
+datacompass usage hot [options]
+```
+
+**Options:**
+
+| Option | Short | Description |
+|--------|-------|-------------|
+| `--source` | `-s` | Filter by source name |
+| `--days` | `-d` | Look back period in days (default: 7) |
+| `--limit` | `-l` | Maximum number of results (default: 20) |
+| `--order-by` | `-o` | Metric to order by (default: `read_count`) |
+| `--format` | `-f` | Output format: `json` or `table` |
+
+**Order-by options:** `read_count`, `write_count`, `row_count`, `size_bytes`
+
+**Examples:**
+
+```bash
+# Show hot tables across all sources
+datacompass usage hot
+
+# Filter by source
+datacompass usage hot --source prod
+
+# Custom lookback and ordering
+datacompass usage hot --days 30 --order-by size_bytes --limit 10
+
+# Table format for readability
+datacompass usage hot --format table
+```
+
+**Output (table):**
+
+```
+Hot Tables (last 7 days, ordered by read_count)
+
+#   Object                           Row Count   Size (MB)   Reads   Writes
+1   prod.analytics.customers         1,500,000   500.00      150     5
+2   prod.core.orders                 5,000,000   1,200.00    120     25
+3   prod.reporting.daily_revenue     365,000     50.00       95      1
+```
+
+---
+
 ## Environment Variables
 
 | Variable | Default | Description |

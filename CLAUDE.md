@@ -70,6 +70,11 @@ cd frontend && npm run dev                       # Frontend (port 5173)
 .venv/bin/datacompass deprecate campaign create "Name" --source <name> --target-date YYYY-MM-DD
 .venv/bin/datacompass deprecate add <object> --campaign <id>
 .venv/bin/datacompass deprecate check <campaign-id>
+
+# Usage Metrics
+.venv/bin/datacompass usage collect <source>
+.venv/bin/datacompass usage show <source.schema.object> [--history 30]
+.venv/bin/datacompass usage hot [--source <name>] [--days 7] [--order-by read_count]
 ```
 
 ### API Endpoints
@@ -88,6 +93,10 @@ POST /api/v1/dq/configs/{id}/run          # Run DQ checks
 GET  /api/v1/dq/breaches                  # List breaches
 GET  /api/v1/deprecations/campaigns       # List campaigns
 GET  /api/v1/deprecations/campaigns/{id}/impact  # Impact analysis
+POST /api/v1/usage/sources/{name}/collect # Collect usage metrics
+GET  /api/v1/usage/objects/{id}           # Object usage metrics
+GET  /api/v1/usage/objects/{id}/history   # Usage history
+GET  /api/v1/usage/hot                    # Hot tables list
 ```
 
 Interactive docs at http://localhost:8000/docs when server is running.
@@ -136,7 +145,8 @@ Interactive docs at http://localhost:8000/docs when server is running.
 │    ├── dq_service.py           # Data quality              │
 │    ├── deprecation_service.py  # Campaign management       │
 │    ├── scheduling_service.py   # Job scheduling            │
-│    └── notification_service.py # Alerts                    │
+│    ├── notification_service.py # Alerts                    │
+│    └── usage_service.py        # Usage metrics             │
 │                                                             │
 │  Repositories (data access)                                 │
 │    src/datacompass/core/repositories/                       │
@@ -192,7 +202,8 @@ data-compass/
 │       │   ├── dependency.py
 │       │   ├── dq.py
 │       │   ├── deprecation.py
-│       │   └── scheduling.py
+│       │   ├── scheduling.py
+│       │   └── usage.py
 │       ├── repositories/        # Data access layer
 │       ├── services/            # Business logic
 │       └── migrations/          # Alembic migrations
@@ -215,7 +226,7 @@ data-compass/
 
 ## Database Schema
 
-Six migrations define the schema:
+Eight migrations define the schema:
 
 | Migration | Tables |
 |-----------|--------|
@@ -225,6 +236,8 @@ Six migrations define the schema:
 | 004_data_quality | `dq_configs`, `dq_expectations`, `dq_results`, `dq_breaches` |
 | 005_deprecation | `deprecation_campaigns`, `deprecations` |
 | 006_scheduling | `schedules`, `schedule_runs`, `notification_channels`, `notification_rules`, `notification_log` |
+| 007_authentication | `users`, `api_keys`, `sessions`, `refresh_tokens` |
+| 008_usage_metrics | `usage_metrics` |
 
 Run migrations: `.venv/bin/alembic upgrade head`
 

@@ -1501,6 +1501,179 @@ Create a notification rule.
 
 ---
 
+## Usage Metrics
+
+Object-level usage statistics and hot tables analysis.
+
+### POST /api/v1/usage/sources/{source_name}/collect
+
+Trigger usage metrics collection for all objects in a source.
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `source_name` | string | Source name |
+
+**Response:** `200 OK`
+
+```json
+{
+  "source_name": "prod",
+  "collected_count": 42,
+  "skipped_count": 3,
+  "error_count": 0,
+  "collected_at": "2025-01-15T10:30:00Z"
+}
+```
+
+**Errors:**
+- `404 Not Found`: Source not found
+
+---
+
+### GET /api/v1/usage/objects/{object_id}
+
+Get latest usage metrics for a catalog object.
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `object_id` | string | Numeric ID or `source.schema.name` |
+
+**Response:** `200 OK`
+
+```json
+{
+  "id": 1,
+  "object_id": 42,
+  "object_name": "customers",
+  "schema_name": "analytics",
+  "source_name": "prod",
+  "collected_at": "2025-01-15T10:30:00Z",
+  "row_count": 1500000,
+  "size_bytes": 524288000,
+  "read_count": 150,
+  "write_count": 5,
+  "last_read_at": "2025-01-15T09:00:00Z",
+  "last_written_at": "2025-01-14T22:00:00Z",
+  "distinct_users": 12,
+  "query_count": 250,
+  "source_metrics": null
+}
+```
+
+**Errors:**
+- `404 Not Found`: Object not found or no metrics exist
+
+---
+
+### GET /api/v1/usage/objects/{object_id}/history
+
+Get historical usage metrics for a catalog object.
+
+**Path Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `object_id` | string | Numeric ID or `source.schema.name` |
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `days` | integer | Number of days to look back (default: 30) |
+| `limit` | integer | Maximum records to return |
+
+**Response:** `200 OK`
+
+```json
+[
+  {
+    "id": 5,
+    "object_id": 42,
+    "collected_at": "2025-01-15T10:30:00Z",
+    "row_count": 1500000,
+    "size_bytes": 524288000,
+    "read_count": 150,
+    "write_count": 5,
+    "last_read_at": "2025-01-15T09:00:00Z",
+    "last_written_at": "2025-01-14T22:00:00Z",
+    "distinct_users": 12,
+    "query_count": 250,
+    "source_metrics": null
+  },
+  {
+    "id": 4,
+    "object_id": 42,
+    "collected_at": "2025-01-14T10:30:00Z",
+    "row_count": 1499000,
+    "size_bytes": 523000000,
+    "read_count": 145,
+    "write_count": 8,
+    "last_read_at": "2025-01-14T09:00:00Z",
+    "last_written_at": "2025-01-13T22:00:00Z",
+    "distinct_users": 10,
+    "query_count": 230,
+    "source_metrics": null
+  }
+]
+```
+
+**Errors:**
+- `404 Not Found`: Object not found
+
+---
+
+### GET /api/v1/usage/hot
+
+Get the most accessed tables across the catalog.
+
+**Query Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `source` | string | Filter by source name (optional) |
+| `days` | integer | Look back period in days (default: 7) |
+| `limit` | integer | Maximum results (default: 20) |
+| `order_by` | string | Metric to order by (default: `read_count`) |
+
+**Order-by options:** `read_count`, `write_count`, `row_count`, `size_bytes`
+
+**Response:** `200 OK`
+
+```json
+[
+  {
+    "object_id": 42,
+    "object_name": "customers",
+    "schema_name": "analytics",
+    "source_name": "prod",
+    "row_count": 1500000,
+    "size_bytes": 524288000,
+    "read_count": 150,
+    "write_count": 5,
+    "last_read_at": "2025-01-15T09:00:00Z",
+    "last_written_at": "2025-01-14T22:00:00Z"
+  },
+  {
+    "object_id": 15,
+    "object_name": "orders",
+    "schema_name": "core",
+    "source_name": "prod",
+    "row_count": 5000000,
+    "size_bytes": 1258291200,
+    "read_count": 120,
+    "write_count": 25,
+    "last_read_at": "2025-01-15T10:00:00Z",
+    "last_written_at": "2025-01-15T06:00:00Z"
+  }
+]
+```
+
+---
+
 ## Example: curl Commands
 
 ### List sources
@@ -1567,4 +1740,28 @@ curl -X POST http://localhost:8000/api/v1/deprecations/campaigns \
     "name": "Q2 Cleanup",
     "target_date": "2025-06-01"
   }'
+```
+
+### Collect usage metrics
+
+```bash
+curl -X POST http://localhost:8000/api/v1/usage/sources/prod/collect
+```
+
+### Get object usage metrics
+
+```bash
+curl "http://localhost:8000/api/v1/usage/objects/prod.analytics.customers"
+```
+
+### Get usage history
+
+```bash
+curl "http://localhost:8000/api/v1/usage/objects/prod.analytics.customers/history?days=30&limit=10"
+```
+
+### Get hot tables
+
+```bash
+curl "http://localhost:8000/api/v1/usage/hot?source=prod&days=7&order_by=read_count&limit=20"
 ```
