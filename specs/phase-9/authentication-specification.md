@@ -1838,28 +1838,46 @@ DATACOMPASS_AUTH_PROVIDER_NAME=Okta
 - When auth is disabled, `require_auth` returns dummy superuser (`dev@localhost`, is_superuser=True)
 - API key creation disabled when auth is disabled (no real user to associate with)
 
-### Phase 9.4: OIDC Provider
+### Phase 9.4: OIDC Provider (Deferred)
 - [ ] Implement OIDCAuthProvider
 - [ ] Implement OAuth authorization URL generation
 - [ ] Implement OAuth callback handling
 - [ ] Implement token validation with JWKS
 - [ ] Add OIDC configuration to settings
 
-### Phase 9.5: Frontend Authentication
-- [ ] Implement AuthContext provider
-- [ ] Implement LoginPage component
-- [ ] Implement ProtectedRoute wrapper
-- [ ] Add OAuth callback page
-- [ ] Update API client with auth headers
-- [ ] Add user menu with logout
+**Status:** Deferred until enterprise SSO environment is available for testing.
+**Guide:** See `docs/oidc-implementation-guide.md` for implementation details.
 
-### Phase 9.6: Testing & Documentation
+### Phase 9.5: Frontend Authentication ✅ COMPLETE
+- [x] Implement AuthContext provider
+- [x] Implement LoginPage component
+- [x] Implement ProtectedRoute wrapper
+- [x] Add OAuth callback page (deferred - SSO button placeholder added)
+- [x] Update API client with auth headers
+- [x] Add user menu with logout
+
+**Implementation Notes:**
+- Auth types added to `frontend/src/api/types.ts`
+- Token injection added to `fetchJson()` in `client.ts`
+- `AuthContext.tsx` handles auth disabled mode gracefully
+- `ProtectedRoute.tsx` passes through when `authDisabled=true`
+- `UserMenu.tsx` hidden when auth disabled
+- SSO button shown as placeholder (disabled) for future OIDC integration
+
+### Phase 9.6: Testing & Documentation ✅ COMPLETE
 - [x] Unit tests for AuthService (26 tests)
 - [x] Repository tests for auth (21 tests)
 - [x] CLI tests for auth commands (25 tests)
 - [x] Integration tests for auth API endpoints (28 tests)
-- [ ] Update API documentation
-- [ ] Write user guide for auth configuration
+- [x] Update API documentation
+- [x] Write user guide for auth configuration
+- [x] Create OIDC implementation guide for Phase 9.4
+
+**Implementation Notes:**
+- `docs/api-reference.md` updated with all auth endpoints
+- `docs/cli-reference.md` updated with all auth commands
+- `docs/user-guide.md` updated with authentication section
+- `docs/oidc-implementation-guide.md` created for future Phase 9.4 work
 
 ---
 

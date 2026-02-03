@@ -1,7 +1,53 @@
 # Data Compass - Project Status
 
 Last updated: 2026-02-03
-Current Phase: **Phase 9.3 Complete** - API Authentication Implemented
+Current Phase: **Phase 9.5 Complete** - Frontend Authentication Implemented
+
+## Completed: Phase 9.5 - Frontend Authentication
+
+### Deliverables
+- [x] Auth types added to `frontend/src/api/types.ts` (AuthUser, TokenResponse, AuthStatusResponse, LoginRequest)
+- [x] Auth API functions in `frontend/src/api/client.ts` (login, refreshTokens, getAuthStatus, getCurrentUser)
+- [x] Token header injection in `fetchJson()` (Authorization: Bearer)
+- [x] `AuthContext.tsx` - Auth state provider with user, isAuthenticated, isLoading, authDisabled
+- [x] `useAuth.ts` - Context consumer hook
+- [x] `ProtectedRoute.tsx` - Route guard with auth disabled mode support
+- [x] `LoginPage.tsx` - Login form with email/password, error handling, redirect on success
+- [x] `UserMenu.tsx` - Header dropdown with user info and logout
+- [x] `App.tsx` updated with AuthProvider wrapper and /login route
+- [x] `Layout.tsx` updated with UserMenu in header
+
+### Key Behaviors
+| Scenario | Behavior |
+|----------|----------|
+| Auth disabled | `authDisabled=true`, app loads normally without login |
+| No token | Redirects to `/login` with `from` state for redirect after login |
+| Valid token | User info displayed in header, full app access |
+| Invalid token | Attempts refresh, clears tokens and redirects to login on failure |
+| Logout | Clears tokens, clears TanStack Query cache, redirects to login |
+
+### New Files Added
+```
+frontend/src/
+├── context/AuthContext.tsx           # Auth state provider
+├── hooks/useAuth.ts                  # Context consumer hook
+├── components/
+│   ├── ProtectedRoute.tsx            # Route guard wrapper
+│   └── UserMenu.tsx                  # Header user dropdown
+└── pages/LoginPage.tsx               # Login form page
+```
+
+### Token Storage
+- Access token: `localStorage.getItem('datacompass-access-token')`
+- Refresh token: `localStorage.getItem('datacompass-refresh-token')`
+
+### Documentation Updated
+- `docs/api-reference.md` - Added all auth API endpoints
+- `docs/cli-reference.md` - Added all auth CLI commands
+- `docs/user-guide.md` - Added authentication section
+- `docs/oidc-implementation-guide.md` - Created for future Phase 9.4 work
+
+---
 
 ## Completed: Phase 9.3 - API Authentication
 
@@ -555,17 +601,15 @@ data-compass/
 
 ---
 
-## Next: Phase 9.4+ - Extended Authentication & Production Hardening
+## Next: Phase 10 - Governance & RBAC
 
-### Phase 9.4: External Auth Providers
-- OIDC provider implementation
+### Phase 9.4: External Auth Providers (Deferred)
+Deferred until enterprise SSO environment is available for testing.
+- OIDC provider implementation (Azure AD, Okta, Google)
 - LDAP provider implementation
 - Auto-registration flows
 
-### Phase 9.5: Frontend Authentication
-- Login/logout UI
-- Session management
-- Protected routes
+See `docs/oidc-implementation-guide.md` for implementation details when ready.
 
 ### Phase 10: Governance & RBAC
 - Role-based access control
