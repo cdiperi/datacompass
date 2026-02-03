@@ -1,5 +1,6 @@
 """API route modules."""
 
+from datacompass.api.routes.auth import router as auth_router
 from datacompass.api.routes.deprecation import router as deprecation_router
 from datacompass.api.routes.dq import router as dq_router
 from datacompass.api.routes.health import router as health_router
@@ -11,6 +12,7 @@ from datacompass.api.routes.search import router as search_router
 from datacompass.api.routes.sources import router as sources_router
 
 __all__ = [
+    "auth_router",
     "deprecation_router",
     "dq_router",
     "health_router",

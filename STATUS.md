@@ -1,7 +1,55 @@
 # Data Compass - Project Status
 
 Last updated: 2026-02-03
-Current Phase: **Phase 9.2 Complete** - CLI Authentication Implemented
+Current Phase: **Phase 9.3 Complete** - API Authentication Implemented
+
+## Completed: Phase 9.3 - API Authentication
+
+### Deliverables
+- [x] Auth dependencies in FastAPI (`get_current_user_optional`, `require_auth`, `require_superuser`, `check_scope`)
+- [x] Security schemes: Bearer token (`Authorization: Bearer <token>`) and API key (`X-API-Key: <key>`)
+- [x] Auth API endpoints at `/api/v1/auth/`:
+  - `POST /auth/login` - Authenticate with email/password
+  - `POST /auth/refresh` - Refresh access token
+  - `GET /auth/me` - Get current user info
+  - `GET /auth/status` - Get auth configuration status
+  - `POST /auth/apikeys` - Create API key
+  - `GET /auth/apikeys` - List user's API keys
+  - `DELETE /auth/apikeys/{id}` - Revoke API key
+  - `POST /auth/users` - Create user (superuser only)
+  - `GET /auth/users` - List users (superuser only)
+  - `GET /auth/users/{email}` - Get user by email (superuser only)
+  - `POST /auth/users/{email}/disable` - Disable user (superuser only)
+  - `POST /auth/users/{email}/enable` - Enable user (superuser only)
+  - `POST /auth/users/{email}/set-superuser` - Set superuser status (superuser only)
+- [x] Exception handlers for auth errors (InvalidCredentialsError, UserNotFoundError, etc.)
+- [x] 28 API auth tests passing
+
+### Key Behaviors
+| Scenario | Behavior |
+|----------|----------|
+| Auth disabled | `require_auth` returns dummy superuser (`dev@localhost`) |
+| Bearer token | Validates JWT access token |
+| API key header | Validates `X-API-Key` header |
+| No credentials | Returns 401 Unauthorized |
+| Not superuser | Admin endpoints return 403 Forbidden |
+| API key + auth disabled | Returns 400 (can't create API keys for dummy user) |
+
+### New Files Added
+```
+src/datacompass/api/
+├── routes/auth.py              # Auth API endpoints
+└── dependencies.py             # Updated with auth dependencies
+
+tests/api/
+└── test_auth_api.py            # 28 auth API tests
+```
+
+### Tests
+- **470 backend tests passing** (up from 442)
+- 28 new API auth tests
+
+---
 
 ## Completed: Phase 9.1 & 9.2 - Core Auth Infrastructure & CLI Authentication
 
@@ -80,15 +128,14 @@ datacompass auth apikey revoke <key-id>
 | `DATACOMPASS_AUTH_AUTO_REGISTER` | `false` | Auto-register on first OIDC/LDAP login |
 
 ### Tests
-- **442 backend tests passing** (up from 368)
+- **442 backend tests passing** (before Phase 9.3)
 - 21 new repository tests
 - 26 new service tests
 - 25 new CLI tests
 
 ### Deferred to Later
-- OIDC provider implementation (Phase 9.3)
-- LDAP provider implementation (Phase 9.3)
-- API middleware for authenticated endpoints (Phase 9.4)
+- OIDC provider implementation (Phase 9.4)
+- LDAP provider implementation (Phase 9.4)
 - Frontend authentication UI (Phase 9.5)
 - Role-based access control (Phase 10)
 
@@ -508,17 +555,12 @@ data-compass/
 
 ---
 
-## Next: Phase 9.3+ - Extended Authentication & Production Hardening
+## Next: Phase 9.4+ - Extended Authentication & Production Hardening
 
-### Phase 9.3: External Auth Providers
+### Phase 9.4: External Auth Providers
 - OIDC provider implementation
 - LDAP provider implementation
 - Auto-registration flows
-
-### Phase 9.4: API Authentication
-- JWT middleware for API endpoints
-- API key authentication for routes
-- Permission checking
 
 ### Phase 9.5: Frontend Authentication
 - Login/logout UI

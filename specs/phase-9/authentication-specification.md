@@ -1819,13 +1819,24 @@ DATACOMPASS_AUTH_PROVIDER_NAME=Okta
 - CLI commands integrated directly into `cli/main.py` (not separate module)
 - User management commands added for admin operations
 
-### Phase 9.3: API Authentication
-- [ ] Implement auth middleware (Bearer + API key)
-- [ ] Implement `/auth/login` endpoint
-- [ ] Implement `/auth/me` endpoint
-- [ ] Implement `/auth/apikeys` CRUD endpoints
-- [ ] Add `require_auth` dependency to protected routes
-- [ ] Implement `/auth/users` admin endpoints
+### Phase 9.3: API Authentication ✅ COMPLETE
+- [x] Implement auth middleware (Bearer + API key)
+- [x] Implement `/auth/login` endpoint
+- [x] Implement `/auth/refresh` endpoint
+- [x] Implement `/auth/me` endpoint
+- [x] Implement `/auth/status` endpoint
+- [x] Implement `/auth/apikeys` CRUD endpoints
+- [x] Add `require_auth` dependency to protected routes
+- [x] Implement `/auth/users` admin endpoints
+- [x] Add auth exception handlers
+- [x] Integration tests for auth API endpoints (28 tests)
+
+**Implementation Notes:**
+- Auth dependencies in `src/datacompass/api/dependencies.py`
+- Auth routes in `src/datacompass/api/routes/auth.py`
+- Exception handlers in `src/datacompass/api/exceptions.py`
+- When auth is disabled, `require_auth` returns dummy superuser (`dev@localhost`, is_superuser=True)
+- API key creation disabled when auth is disabled (no real user to associate with)
 
 ### Phase 9.4: OIDC Provider
 - [ ] Implement OIDCAuthProvider
@@ -1846,7 +1857,7 @@ DATACOMPASS_AUTH_PROVIDER_NAME=Okta
 - [x] Unit tests for AuthService (26 tests)
 - [x] Repository tests for auth (21 tests)
 - [x] CLI tests for auth commands (25 tests)
-- [ ] Integration tests for auth API endpoints
+- [x] Integration tests for auth API endpoints (28 tests)
 - [ ] Update API documentation
 - [ ] Write user guide for auth configuration
 

@@ -31,6 +31,11 @@ from datacompass.core.models import (  # noqa: F401
     Schedule,
     ScheduleRun,
 )
+from datacompass.core.models.auth import (  # noqa: F401
+    APIKey,
+    RefreshToken,
+    User,
+)
 
 
 @pytest.fixture

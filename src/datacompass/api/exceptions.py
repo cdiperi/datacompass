@@ -9,6 +9,14 @@ from datacompass.core.services import (
     SourceExistsError,
     SourceNotFoundError,
 )
+from datacompass.core.services.auth_service import (
+    APIKeyNotFoundError,
+    AuthDisabledError,
+    InvalidCredentialsError,
+    TokenExpiredError,
+    UserExistsError,
+    UserNotFoundError,
+)
 from datacompass.core.services.deprecation_service import (
     CampaignExistsError,
     CampaignNotFoundError,
@@ -274,6 +282,95 @@ async def rule_not_found_handler(
     )
 
 
+# =============================================================================
+# Auth Exception Handlers
+# =============================================================================
+
+
+async def invalid_credentials_handler(
+    request: Request, exc: InvalidCredentialsError
+) -> JSONResponse:
+    """Handle InvalidCredentialsError exceptions."""
+    return JSONResponse(
+        status_code=401,
+        content={
+            "error": "invalid_credentials",
+            "message": exc.message,
+        },
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+async def user_not_found_handler(
+    request: Request, exc: UserNotFoundError
+) -> JSONResponse:
+    """Handle UserNotFoundError exceptions."""
+    return JSONResponse(
+        status_code=404,
+        content={
+            "error": "user_not_found",
+            "message": str(exc),
+            "detail": {"identifier": exc.identifier},
+        },
+    )
+
+
+async def user_exists_handler(
+    request: Request, exc: UserExistsError
+) -> JSONResponse:
+    """Handle UserExistsError exceptions."""
+    return JSONResponse(
+        status_code=409,
+        content={
+            "error": "user_exists",
+            "message": str(exc),
+            "detail": {"email": exc.email},
+        },
+    )
+
+
+async def api_key_not_found_handler(
+    request: Request, exc: APIKeyNotFoundError
+) -> JSONResponse:
+    """Handle APIKeyNotFoundError exceptions."""
+    return JSONResponse(
+        status_code=404,
+        content={
+            "error": "api_key_not_found",
+            "message": str(exc),
+            "detail": {"identifier": str(exc.identifier)},
+        },
+    )
+
+
+async def token_expired_handler(
+    request: Request, exc: TokenExpiredError
+) -> JSONResponse:
+    """Handle TokenExpiredError exceptions."""
+    return JSONResponse(
+        status_code=401,
+        content={
+            "error": "token_expired",
+            "message": exc.message,
+        },
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+
+async def auth_disabled_handler(
+    request: Request, exc: AuthDisabledError
+) -> JSONResponse:
+    """Handle AuthDisabledError exceptions."""
+    return JSONResponse(
+        status_code=400,
+        content={
+            "error": "auth_disabled",
+            "message": str(exc),
+            "detail": {"operation": exc.operation},
+        },
+    )
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     """Register all exception handlers on the FastAPI app."""
     app.add_exception_handler(SourceNotFoundError, source_not_found_handler)
@@ -294,3 +391,10 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(ChannelNotFoundError, channel_not_found_handler)
     app.add_exception_handler(ChannelExistsError, channel_exists_handler)
     app.add_exception_handler(RuleNotFoundError, rule_not_found_handler)
+    # Auth exception handlers
+    app.add_exception_handler(InvalidCredentialsError, invalid_credentials_handler)
+    app.add_exception_handler(UserNotFoundError, user_not_found_handler)
+    app.add_exception_handler(UserExistsError, user_exists_handler)
+    app.add_exception_handler(APIKeyNotFoundError, api_key_not_found_handler)
+    app.add_exception_handler(TokenExpiredError, token_expired_handler)
+    app.add_exception_handler(AuthDisabledError, auth_disabled_handler)

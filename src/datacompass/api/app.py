@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from datacompass import __version__
 from datacompass.api.exceptions import register_exception_handlers
 from datacompass.api.routes import (
+    auth_router,
     deprecation_router,
     dq_router,
     health_router,
@@ -47,6 +48,7 @@ def create_app() -> FastAPI:
 
     # Mount routers
     app.include_router(health_router)
+    app.include_router(auth_router, prefix="/api/v1")
     app.include_router(sources_router, prefix="/api/v1")
     app.include_router(objects_router, prefix="/api/v1")
     app.include_router(lineage_router, prefix="/api/v1")
