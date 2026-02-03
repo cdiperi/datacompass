@@ -45,7 +45,7 @@ frontend/src/
 - `docs/api-reference.md` - Added all auth API endpoints
 - `docs/cli-reference.md` - Added all auth CLI commands
 - `docs/user-guide.md` - Added authentication section
-- `docs/oidc-implementation-guide.md` - Created for future Phase 9.4 work
+- `docs/dev/oidc-implementation-guide.md` - Created for future Phase 9.4 work
 
 ---
 
@@ -609,7 +609,7 @@ Deferred until enterprise SSO environment is available for testing.
 - LDAP provider implementation
 - Auto-registration flows
 
-See `docs/oidc-implementation-guide.md` for implementation details when ready.
+See `docs/dev/oidc-implementation-guide.md` for implementation details when ready.
 
 ### Phase 10: Governance & RBAC
 - Role-based access control

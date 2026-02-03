@@ -106,12 +106,12 @@ Interactive docs at http://localhost:8000/docs when server is running.
 | Document | Purpose |
 |----------|---------|
 | [STATUS.md](STATUS.md) | Current phase, recent changes, next steps |
-| [docs/architecture.md](docs/architecture.md) | System design, data flow, extension points |
 | [docs/user-guide.md](docs/user-guide.md) | Feature walkthroughs and examples |
 | [docs/cli-reference.md](docs/cli-reference.md) | Complete CLI command reference |
 | [docs/api-reference.md](docs/api-reference.md) | REST API documentation |
-| [docs/terminal-first-design-philosophy.md](docs/terminal-first-design-philosophy.md) | Core architectural principles |
-| [docs/adapter-implementation-guide.md](docs/adapter-implementation-guide.md) | Building source adapters |
+| [docs/architecture.md](docs/architecture.md) | System design, data flow, extension points |
+| [docs/dev/terminal-first-design-philosophy.md](docs/dev/terminal-first-design-philosophy.md) | Core architectural principles |
+| [docs/dev/adapter-implementation-guide.md](docs/dev/adapter-implementation-guide.md) | Building source adapters |
 | [specs/foundation/technical-specification.md](specs/foundation/technical-specification.md) | Original spec (reference only) |
 
 ## Architecture
