@@ -43,6 +43,17 @@ from datacompass.core.services.notification_service import (
     ChannelExistsError,
     RuleNotFoundError,
 )
+from datacompass.core.services.auth_service import (
+    AuthService,
+    AuthServiceError,
+    AuthDisabledError,
+    InvalidCredentialsError,
+    UserNotFoundError,
+    UserExistsError,
+    APIKeyNotFoundError,
+    TokenExpiredError,
+)
+from datacompass.core.models.auth import UserCreate
 
 # Console instances for stdout/stderr
 console = Console()
@@ -112,6 +123,18 @@ notify_app = typer.Typer(
     help="Manage notifications.",
     no_args_is_help=True,
 )
+auth_app = typer.Typer(
+    help="Authentication management.",
+    no_args_is_help=True,
+)
+auth_user_app = typer.Typer(
+    help="User management (admin).",
+    no_args_is_help=True,
+)
+auth_apikey_app = typer.Typer(
+    help="API key management.",
+    no_args_is_help=True,
+)
 
 app.add_typer(source_app, name="source")
 app.add_typer(objects_app, name="objects")
@@ -121,6 +144,9 @@ app.add_typer(adapters_app, name="adapters")
 app.add_typer(schedule_app, name="schedule")
 app.add_typer(scheduler_app, name="scheduler")
 app.add_typer(notify_app, name="notify")
+app.add_typer(auth_app, name="auth")
+auth_app.add_typer(auth_user_app, name="user")
+auth_app.add_typer(auth_apikey_app, name="apikey")
 
 
 def version_callback(value: bool) -> None:
@@ -2740,6 +2766,732 @@ def notify_apply(
 
     except FileNotFoundError:
         err_console.print(f"[red]Error:[/red] File not found: {config_file}")
+        raise typer.Exit(1) from None
+    except Exception as e:
+        code = handle_error(e)
+        raise typer.Exit(code) from None
+
+
+# =============================================================================
+# Auth commands
+# =============================================================================
+
+
+def _get_credentials_path() -> Path:
+    """Get path to credentials file."""
+    from datacompass.config.settings import get_settings
+
+    settings = get_settings()
+    return settings.data_dir / ".credentials"
+
+
+def _store_credentials(access_token: str, refresh_token: str) -> None:
+    """Store credentials to file with secure permissions."""
+    creds_path = _get_credentials_path()
+    creds_path.parent.mkdir(parents=True, exist_ok=True)
+
+    creds_data = {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+    }
+
+    creds_path.write_text(json.dumps(creds_data))
+    creds_path.chmod(0o600)
+
+
+def _get_stored_credentials() -> dict | None:
+    """Get stored credentials if they exist."""
+    creds_path = _get_credentials_path()
+    if not creds_path.exists():
+        return None
+
+    try:
+        return json.loads(creds_path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def _clear_credentials() -> None:
+    """Clear stored credentials."""
+    creds_path = _get_credentials_path()
+    if creds_path.exists():
+        creds_path.unlink()
+
+
+def _get_current_user(session):
+    """Get current user from stored token or environment.
+
+    Returns (user, auth_service) tuple or (None, auth_service) if not authenticated.
+    """
+    import os
+
+    auth_service = AuthService(session)
+
+    # Check environment for API key
+    api_key = os.environ.get("DATACOMPASS_API_KEY")
+    if api_key:
+        try:
+            user = auth_service.authenticate_api_key(api_key)
+            return user, auth_service
+        except AuthServiceError:
+            pass
+
+    # Check environment for access token
+    access_token = os.environ.get("DATACOMPASS_ACCESS_TOKEN")
+    if access_token:
+        try:
+            user = auth_service.validate_access_token(access_token)
+            return user, auth_service
+        except AuthServiceError:
+            pass
+
+    # Check stored credentials
+    creds = _get_stored_credentials()
+    if creds:
+        try:
+            user = auth_service.validate_access_token(creds.get("access_token", ""))
+            return user, auth_service
+        except TokenExpiredError:
+            # Try to refresh
+            try:
+                response = auth_service.refresh_tokens(creds.get("refresh_token", ""))
+                _store_credentials(response.access_token, response.refresh_token)
+                user = auth_service.validate_access_token(response.access_token)
+                return user, auth_service
+            except AuthServiceError:
+                _clear_credentials()
+        except AuthServiceError:
+            pass
+
+    return None, auth_service
+
+
+@auth_app.command("login")
+def auth_login(
+    email: Annotated[
+        str | None, typer.Option("--email", "-e", help="Email address.")
+    ] = None,
+    password: Annotated[
+        str | None, typer.Option("--password", "-p", help="Password (will prompt if not provided).")
+    ] = None,
+    format: Annotated[
+        OutputFormat, typer.Option("--format", "-f", help="Output format.")
+    ] = OutputFormat.json,
+) -> None:
+    """Login and store credentials.
+
+    Examples:
+        datacompass auth login --email user@example.com
+        datacompass auth login -e user@example.com -p secret
+    """
+    try:
+        with get_session() as session:
+            auth_service = AuthService(session)
+
+            # Prompt for email if not provided
+            if not email:
+                email = typer.prompt("Email")
+
+            # Prompt for password if not provided
+            if not password:
+                password = typer.prompt("Password", hide_input=True)
+
+            response = auth_service.authenticate(email, password)
+            session.commit()
+
+            # Store credentials
+            _store_credentials(response.access_token, response.refresh_token)
+
+            if format == OutputFormat.table:
+                console.print("[green]Login successful![/green]")
+                console.print(f"[dim]Credentials stored at {_get_credentials_path()}[/dim]")
+            else:
+                output_result({
+                    "success": True,
+                    "message": "Login successful",
+                    "expires_in": response.expires_in,
+                }, format)
+
+    except AuthDisabledError:
+        err_console.print("[yellow]Authentication is disabled.[/yellow]")
+        err_console.print("[dim]Set DATACOMPASS_AUTH_MODE=local to enable.[/dim]")
+        raise typer.Exit(1) from None
+    except InvalidCredentialsError as e:
+        err_console.print(f"[red]Error:[/red] {e.message}")
+        raise typer.Exit(1) from None
+    except Exception as e:
+        code = handle_error(e)
+        raise typer.Exit(code) from None
+
+
+@auth_app.command("logout")
+def auth_logout(
+    format: Annotated[
+        OutputFormat, typer.Option("--format", "-f", help="Output format.")
+    ] = OutputFormat.json,
+) -> None:
+    """Logout and clear stored credentials.
+
+    Examples:
+        datacompass auth logout
+    """
+    _clear_credentials()
+
+    if format == OutputFormat.table:
+        console.print("[green]Logged out successfully.[/green]")
+    else:
+        output_result({"success": True, "message": "Logged out"}, format)
+
+
+@auth_app.command("whoami")
+def auth_whoami(
+    format: Annotated[
+        OutputFormat, typer.Option("--format", "-f", help="Output format.")
+    ] = OutputFormat.json,
+) -> None:
+    """Show current authenticated user.
+
+    Examples:
+        datacompass auth whoami
+    """
+    try:
+        with get_session() as session:
+            user, auth_service = _get_current_user(session)
+
+            status = auth_service.get_auth_status()
+
+            if status["auth_mode"] == "disabled":
+                if format == OutputFormat.table:
+                    console.print("[yellow]Authentication is disabled.[/yellow]")
+                else:
+                    output_result({
+                        "auth_mode": "disabled",
+                        "is_authenticated": False,
+                    }, format)
+                return
+
+            if user is None:
+                if format == OutputFormat.table:
+                    console.print("[dim]Not authenticated.[/dim]")
+                    console.print("[dim]Use 'datacompass auth login' to authenticate.[/dim]")
+                else:
+                    output_result({
+                        "auth_mode": status["auth_mode"],
+                        "is_authenticated": False,
+                    }, format)
+                raise typer.Exit(1)
+
+            if format == OutputFormat.table:
+                table = Table(show_header=False)
+                table.add_column("Key", style="bold")
+                table.add_column("Value")
+                table.add_row("Email", user.email)
+                table.add_row("Display Name", user.display_name or "-")
+                table.add_row("Superuser", "Yes" if user.is_superuser else "No")
+                table.add_row("Last Login", str(user.last_login_at)[:19] if user.last_login_at else "-")
+                console.print(table)
+            else:
+                from datacompass.core.models.auth import UserResponse
+                output_result({
+                    "auth_mode": status["auth_mode"],
+                    "is_authenticated": True,
+                    "user": UserResponse.model_validate(user).model_dump(),
+                }, format)
+
+    except AuthDisabledError:
+        if format == OutputFormat.table:
+            console.print("[yellow]Authentication is disabled.[/yellow]")
+        else:
+            output_result({"auth_mode": "disabled", "is_authenticated": False}, format)
+    except Exception as e:
+        code = handle_error(e)
+        raise typer.Exit(code) from None
+
+
+@auth_app.command("status")
+def auth_status(
+    format: Annotated[
+        OutputFormat, typer.Option("--format", "-f", help="Output format.")
+    ] = OutputFormat.json,
+) -> None:
+    """Show authentication mode and configuration.
+
+    Examples:
+        datacompass auth status
+    """
+    try:
+        with get_session() as session:
+            auth_service = AuthService(session)
+            status = auth_service.get_auth_status()
+
+            if format == OutputFormat.table:
+                table = Table(show_header=False)
+                table.add_column("Key", style="bold")
+                table.add_column("Value")
+                table.add_row("Auth Mode", status["auth_mode"])
+                table.add_row("Auth Enabled", "Yes" if status["auth_enabled"] else "No")
+                if status["auth_enabled"]:
+                    table.add_row("Supports Local Auth", "Yes" if status["supports_local_auth"] else "No")
+                    table.add_row("Access Token Expiry", f"{status['access_token_expire_minutes']} minutes")
+                    table.add_row("Refresh Token Expiry", f"{status['refresh_token_expire_days']} days")
+                console.print(table)
+            else:
+                output_result(status, format)
+
+    except Exception as e:
+        code = handle_error(e)
+        raise typer.Exit(code) from None
+
+
+# =============================================================================
+# Auth API Key commands
+# =============================================================================
+
+
+@auth_apikey_app.command("create")
+def auth_apikey_create(
+    name: Annotated[str, typer.Argument(help="Name for the API key.")],
+    scopes: Annotated[
+        str | None, typer.Option("--scopes", "-s", help="Comma-separated list of scopes.")
+    ] = None,
+    expires_days: Annotated[
+        int | None, typer.Option("--expires-days", "-d", help="Expiration in days.")
+    ] = None,
+    format: Annotated[
+        OutputFormat, typer.Option("--format", "-f", help="Output format.")
+    ] = OutputFormat.json,
+) -> None:
+    """Create a new API key.
+
+    Examples:
+        datacompass auth apikey create "CI/CD Key" --scopes read,write
+        datacompass auth apikey create "Temp Key" --expires-days 30
+    """
+    try:
+        with get_session() as session:
+            user, auth_service = _get_current_user(session)
+
+            if user is None:
+                err_console.print("[red]Error:[/red] Not authenticated.")
+                err_console.print("[dim]Use 'datacompass auth login' first.[/dim]")
+                raise typer.Exit(1)
+
+            scope_list = None
+            if scopes:
+                scope_list = [s.strip() for s in scopes.split(",")]
+
+            api_key = auth_service.create_api_key(
+                user=user,
+                name=name,
+                scopes=scope_list,
+                expires_days=expires_days,
+            )
+            session.commit()
+
+            if format == OutputFormat.table:
+                console.print("\n[bold green]API key created![/bold green]\n")
+                console.print("[bold yellow]Important:[/bold yellow] Copy the key now. It won't be shown again.\n")
+
+                table = Table(show_header=False)
+                table.add_column("Key", style="bold")
+                table.add_column("Value")
+                table.add_row("Key", api_key.key)
+                table.add_row("ID", str(api_key.id))
+                table.add_row("Name", api_key.name)
+                table.add_row("Prefix", api_key.key_prefix)
+                table.add_row("Scopes", ", ".join(api_key.scopes) if api_key.scopes else "-")
+                table.add_row("Expires", str(api_key.expires_at)[:19] if api_key.expires_at else "Never")
+                console.print(table)
+            else:
+                output_result(api_key.model_dump(), format)
+
+    except AuthDisabledError:
+        err_console.print("[yellow]Authentication is disabled.[/yellow]")
+        raise typer.Exit(1) from None
+    except Exception as e:
+        code = handle_error(e)
+        raise typer.Exit(code) from None
+
+
+@auth_apikey_app.command("list")
+def auth_apikey_list(
+    include_inactive: Annotated[
+        bool, typer.Option("--include-inactive", help="Include revoked keys.")
+    ] = False,
+    format: Annotated[
+        OutputFormat, typer.Option("--format", "-f", help="Output format.")
+    ] = OutputFormat.json,
+) -> None:
+    """List API keys.
+
+    Examples:
+        datacompass auth apikey list
+        datacompass auth apikey list --include-inactive
+    """
+    try:
+        with get_session() as session:
+            user, auth_service = _get_current_user(session)
+
+            if user is None:
+                err_console.print("[red]Error:[/red] Not authenticated.")
+                err_console.print("[dim]Use 'datacompass auth login' first.[/dim]")
+                raise typer.Exit(1)
+
+            keys = auth_service.list_api_keys(user, include_inactive=include_inactive)
+
+            if format == OutputFormat.table:
+                if not keys:
+                    console.print("[dim]No API keys found.[/dim]")
+                    return
+
+                table = Table()
+                table.add_column("ID", justify="right")
+                table.add_column("Name")
+                table.add_column("Prefix")
+                table.add_column("Scopes")
+                table.add_column("Expires")
+                table.add_column("Last Used")
+                table.add_column("Active")
+
+                for key in keys:
+                    active = "[green]Yes[/green]" if key.is_active else "[red]No[/red]"
+                    scopes = ", ".join(key.scopes) if key.scopes else "-"
+                    expires = str(key.expires_at)[:10] if key.expires_at else "Never"
+                    last_used = str(key.last_used_at)[:19] if key.last_used_at else "-"
+
+                    table.add_row(
+                        str(key.id),
+                        key.name,
+                        key.key_prefix,
+                        scopes,
+                        expires,
+                        last_used,
+                        active,
+                    )
+
+                console.print(table)
+            else:
+                from datacompass.core.models.auth import APIKeyResponse
+                result = [APIKeyResponse.model_validate(k).model_dump() for k in keys]
+                output_result(result, format)
+
+    except AuthDisabledError:
+        err_console.print("[yellow]Authentication is disabled.[/yellow]")
+        raise typer.Exit(1) from None
+    except Exception as e:
+        code = handle_error(e)
+        raise typer.Exit(code) from None
+
+
+@auth_apikey_app.command("revoke")
+def auth_apikey_revoke(
+    key_id: Annotated[int, typer.Argument(help="API key ID to revoke.")],
+    format: Annotated[
+        OutputFormat, typer.Option("--format", "-f", help="Output format.")
+    ] = OutputFormat.json,
+) -> None:
+    """Revoke an API key.
+
+    Examples:
+        datacompass auth apikey revoke 1
+    """
+    try:
+        with get_session() as session:
+            user, auth_service = _get_current_user(session)
+
+            if user is None:
+                err_console.print("[red]Error:[/red] Not authenticated.")
+                err_console.print("[dim]Use 'datacompass auth login' first.[/dim]")
+                raise typer.Exit(1)
+
+            api_key = auth_service.revoke_api_key(key_id, user)
+            session.commit()
+
+            if format == OutputFormat.table:
+                console.print(f"[green]API key {key_id} ({api_key.name}) revoked.[/green]")
+            else:
+                output_result({"success": True, "key_id": key_id, "message": "API key revoked"}, format)
+
+    except APIKeyNotFoundError:
+        err_console.print(f"[red]Error:[/red] API key not found: {key_id}")
+        raise typer.Exit(1) from None
+    except AuthDisabledError:
+        err_console.print("[yellow]Authentication is disabled.[/yellow]")
+        raise typer.Exit(1) from None
+    except Exception as e:
+        code = handle_error(e)
+        raise typer.Exit(code) from None
+
+
+# =============================================================================
+# Auth User commands (admin)
+# =============================================================================
+
+
+@auth_user_app.command("create")
+def auth_user_create(
+    email: Annotated[str, typer.Argument(help="User email address.")],
+    password: Annotated[
+        bool, typer.Option("--password", "-p", help="Prompt for password.")
+    ] = False,
+    display_name: Annotated[
+        str | None, typer.Option("--display-name", "-n", help="Display name.")
+    ] = None,
+    superuser: Annotated[
+        bool, typer.Option("--superuser", help="Grant superuser privileges.")
+    ] = False,
+    format: Annotated[
+        OutputFormat, typer.Option("--format", "-f", help="Output format.")
+    ] = OutputFormat.json,
+) -> None:
+    """Create a new user.
+
+    Examples:
+        datacompass auth user create admin@example.com --password --superuser
+        datacompass auth user create user@example.com --display-name "John Doe"
+    """
+    try:
+        with get_session() as session:
+            auth_service = AuthService(session)
+
+            # Prompt for password if flag is set
+            user_password = None
+            if password:
+                user_password = typer.prompt("Password", hide_input=True)
+                password_confirm = typer.prompt("Confirm Password", hide_input=True)
+                if user_password != password_confirm:
+                    err_console.print("[red]Error:[/red] Passwords do not match.")
+                    raise typer.Exit(1)
+
+            user_data = UserCreate(
+                email=email,
+                password=user_password,
+                display_name=display_name,
+                is_superuser=superuser,
+            )
+
+            user = auth_service.create_local_user(user_data)
+            session.commit()
+
+            if format == OutputFormat.table:
+                console.print(f"[green]User created:[/green] {user.email}")
+                if superuser:
+                    console.print("[dim]Superuser privileges granted.[/dim]")
+            else:
+                from datacompass.core.models.auth import UserResponse
+                output_result(UserResponse.model_validate(user).model_dump(), format)
+
+    except UserExistsError as e:
+        err_console.print(f"[red]Error:[/red] User already exists: {e.email}")
+        raise typer.Exit(1) from None
+    except Exception as e:
+        code = handle_error(e)
+        raise typer.Exit(code) from None
+
+
+@auth_user_app.command("list")
+def auth_user_list(
+    include_inactive: Annotated[
+        bool, typer.Option("--include-inactive", help="Include disabled users.")
+    ] = False,
+    format: Annotated[
+        OutputFormat, typer.Option("--format", "-f", help="Output format.")
+    ] = OutputFormat.json,
+) -> None:
+    """List all users.
+
+    Examples:
+        datacompass auth user list
+        datacompass auth user list --include-inactive
+    """
+    try:
+        with get_session() as session:
+            auth_service = AuthService(session)
+            users = auth_service.list_users(include_inactive=include_inactive)
+
+            if format == OutputFormat.table:
+                if not users:
+                    console.print("[dim]No users found.[/dim]")
+                    return
+
+                table = Table()
+                table.add_column("ID", justify="right")
+                table.add_column("Email")
+                table.add_column("Display Name")
+                table.add_column("Superuser")
+                table.add_column("Active")
+                table.add_column("Last Login")
+
+                for user in users:
+                    active = "[green]Yes[/green]" if user.is_active else "[red]No[/red]"
+                    superuser = "[cyan]Yes[/cyan]" if user.is_superuser else "No"
+                    last_login = str(user.last_login_at)[:19] if user.last_login_at else "-"
+
+                    table.add_row(
+                        str(user.id),
+                        user.email,
+                        user.display_name or "-",
+                        superuser,
+                        active,
+                        last_login,
+                    )
+
+                console.print(table)
+            else:
+                from datacompass.core.models.auth import UserResponse
+                result = [UserResponse.model_validate(u).model_dump() for u in users]
+                output_result(result, format)
+
+    except Exception as e:
+        code = handle_error(e)
+        raise typer.Exit(code) from None
+
+
+@auth_user_app.command("show")
+def auth_user_show(
+    email: Annotated[str, typer.Argument(help="User email address.")],
+    format: Annotated[
+        OutputFormat, typer.Option("--format", "-f", help="Output format.")
+    ] = OutputFormat.json,
+) -> None:
+    """Show user details.
+
+    Examples:
+        datacompass auth user show admin@example.com
+    """
+    try:
+        with get_session() as session:
+            auth_service = AuthService(session)
+            user = auth_service.get_user_by_email(email)
+
+            if format == OutputFormat.table:
+                table = Table(show_header=False)
+                table.add_column("Key", style="bold")
+                table.add_column("Value")
+                table.add_row("ID", str(user.id))
+                table.add_row("Email", user.email)
+                table.add_row("Username", user.username or "-")
+                table.add_row("Display Name", user.display_name or "-")
+                table.add_row("External Provider", user.external_provider or "-")
+                table.add_row("Superuser", "Yes" if user.is_superuser else "No")
+                table.add_row("Active", "Yes" if user.is_active else "No")
+                table.add_row("Last Login", str(user.last_login_at)[:19] if user.last_login_at else "-")
+                table.add_row("Created", str(user.created_at)[:19])
+                console.print(table)
+            else:
+                from datacompass.core.models.auth import UserResponse
+                output_result(UserResponse.model_validate(user).model_dump(), format)
+
+    except UserNotFoundError:
+        err_console.print(f"[red]Error:[/red] User not found: {email!r}")
+        raise typer.Exit(1) from None
+    except Exception as e:
+        code = handle_error(e)
+        raise typer.Exit(code) from None
+
+
+@auth_user_app.command("disable")
+def auth_user_disable(
+    email: Annotated[str, typer.Argument(help="User email address.")],
+    format: Annotated[
+        OutputFormat, typer.Option("--format", "-f", help="Output format.")
+    ] = OutputFormat.json,
+) -> None:
+    """Disable a user account.
+
+    Examples:
+        datacompass auth user disable user@example.com
+    """
+    try:
+        with get_session() as session:
+            auth_service = AuthService(session)
+            user = auth_service.disable_user(email)
+            session.commit()
+
+            if format == OutputFormat.table:
+                console.print(f"[green]User disabled:[/green] {email}")
+                console.print("[dim]All sessions and tokens have been invalidated.[/dim]")
+            else:
+                output_result({"success": True, "email": email, "message": "User disabled"}, format)
+
+    except UserNotFoundError:
+        err_console.print(f"[red]Error:[/red] User not found: {email!r}")
+        raise typer.Exit(1) from None
+    except Exception as e:
+        code = handle_error(e)
+        raise typer.Exit(code) from None
+
+
+@auth_user_app.command("enable")
+def auth_user_enable(
+    email: Annotated[str, typer.Argument(help="User email address.")],
+    format: Annotated[
+        OutputFormat, typer.Option("--format", "-f", help="Output format.")
+    ] = OutputFormat.json,
+) -> None:
+    """Enable a user account.
+
+    Examples:
+        datacompass auth user enable user@example.com
+    """
+    try:
+        with get_session() as session:
+            auth_service = AuthService(session)
+            user = auth_service.enable_user(email)
+            session.commit()
+
+            if format == OutputFormat.table:
+                console.print(f"[green]User enabled:[/green] {email}")
+            else:
+                output_result({"success": True, "email": email, "message": "User enabled"}, format)
+
+    except UserNotFoundError:
+        err_console.print(f"[red]Error:[/red] User not found: {email!r}")
+        raise typer.Exit(1) from None
+    except Exception as e:
+        code = handle_error(e)
+        raise typer.Exit(code) from None
+
+
+@auth_user_app.command("set-superuser")
+def auth_user_set_superuser(
+    email: Annotated[str, typer.Argument(help="User email address.")],
+    remove: Annotated[
+        bool, typer.Option("--remove", help="Remove superuser privileges.")
+    ] = False,
+    format: Annotated[
+        OutputFormat, typer.Option("--format", "-f", help="Output format.")
+    ] = OutputFormat.json,
+) -> None:
+    """Grant or revoke superuser privileges.
+
+    Examples:
+        datacompass auth user set-superuser admin@example.com
+        datacompass auth user set-superuser admin@example.com --remove
+    """
+    try:
+        with get_session() as session:
+            auth_service = AuthService(session)
+            is_superuser = not remove
+            user = auth_service.set_superuser(email, is_superuser)
+            session.commit()
+
+            if format == OutputFormat.table:
+                if is_superuser:
+                    console.print(f"[green]Superuser privileges granted to:[/green] {email}")
+                else:
+                    console.print(f"[green]Superuser privileges removed from:[/green] {email}")
+            else:
+                action = "granted" if is_superuser else "removed"
+                output_result({
+                    "success": True,
+                    "email": email,
+                    "is_superuser": is_superuser,
+                    "message": f"Superuser privileges {action}",
+                }, format)
+
+    except UserNotFoundError:
+        err_console.print(f"[red]Error:[/red] User not found: {email!r}")
         raise typer.Exit(1) from None
     except Exception as e:
         code = handle_error(e)

@@ -11,6 +11,15 @@ from sqlalchemy.orm import Session
 from datacompass.core.adapters import AdapterError, AdapterNotFoundError
 from datacompass.core.database import init_database, session_scope
 from datacompass.core.services import ConfigLoadError, SourceExistsError, SourceNotFoundError
+from datacompass.core.services.auth_service import (
+    AuthServiceError,
+    AuthDisabledError,
+    InvalidCredentialsError,
+    UserNotFoundError,
+    UserExistsError,
+    APIKeyNotFoundError,
+    TokenExpiredError,
+)
 
 err_console = Console(stderr=True)
 
@@ -72,6 +81,36 @@ def handle_error(error: Exception) -> int:
 
     elif isinstance(error, FileNotFoundError):
         err_console.print(f"[red]Error:[/red] File not found: {error.filename}")
+        return 1
+
+    elif isinstance(error, AuthDisabledError):
+        err_console.print(f"[yellow]Authentication is disabled:[/yellow] Cannot {error.operation}")
+        err_console.print("[dim]Set DATACOMPASS_AUTH_MODE=local to enable authentication.[/dim]")
+        return 1
+
+    elif isinstance(error, InvalidCredentialsError):
+        err_console.print(f"[red]Authentication failed:[/red] {error.message}")
+        return 1
+
+    elif isinstance(error, UserNotFoundError):
+        err_console.print(f"[red]Error:[/red] User not found: {error.identifier!r}")
+        return 1
+
+    elif isinstance(error, UserExistsError):
+        err_console.print(f"[red]Error:[/red] User already exists: {error.email!r}")
+        return 1
+
+    elif isinstance(error, APIKeyNotFoundError):
+        err_console.print(f"[red]Error:[/red] API key not found: {error.identifier!r}")
+        return 1
+
+    elif isinstance(error, TokenExpiredError):
+        err_console.print(f"[red]Error:[/red] {error.message}")
+        err_console.print("[dim]Please login again with 'datacompass auth login'.[/dim]")
+        return 1
+
+    elif isinstance(error, AuthServiceError):
+        err_console.print(f"[red]Authentication error:[/red] {error}")
         return 1
 
     else:
