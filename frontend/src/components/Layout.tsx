@@ -1,7 +1,8 @@
-import { Layout as AntLayout } from 'antd'
+import { Layout as AntLayout, Space } from 'antd'
 import { Outlet, useLocation } from 'react-router-dom'
 import { CollapsibleSidebar } from './CollapsibleSidebar'
 import { SearchBar } from './SearchBar'
+import { UserMenu } from './UserMenu'
 import { useSidebar } from '../hooks/useSidebar'
 
 const { Header, Content } = AntLayout
@@ -40,7 +41,10 @@ export function Layout() {
               zIndex: 10,
             }}
           >
-            <SearchBar />
+            <Space size="middle">
+              <SearchBar />
+              <UserMenu />
+            </Space>
           </Header>
         )}
         <Content

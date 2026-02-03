@@ -4,6 +4,7 @@
  */
 
 import type {
+  AuthStatusResponse,
   BreachStatusUpdate,
   CampaignCreate,
   CampaignDetailResponse,
@@ -36,12 +37,14 @@ import type {
   LineageFilters,
   LineageGraph,
   LineageSummary,
+  LoginRequest,
   NotificationChannel,
   NotificationLogEntry,
   NotificationLogFilters,
   NotificationRule,
   ObjectFilters,
   ObjectUpdateRequest,
+  RefreshTokenRequest,
   RuleCreate,
   RuleFilters,
   RuleUpdate,
@@ -53,9 +56,39 @@ import type {
   SchedulerHubSummary,
   SearchFilters,
   SearchResult,
+  TokenResponse,
 } from './types'
 
 const API_BASE = '/api/v1'
+
+// =============================================================================
+// Auth Token Storage
+// =============================================================================
+
+const ACCESS_TOKEN_KEY = 'datacompass-access-token'
+const REFRESH_TOKEN_KEY = 'datacompass-refresh-token'
+
+export function getAccessToken(): string | null {
+  return localStorage.getItem(ACCESS_TOKEN_KEY)
+}
+
+export function getRefreshToken(): string | null {
+  return localStorage.getItem(REFRESH_TOKEN_KEY)
+}
+
+export function setTokens(accessToken: string, refreshToken: string): void {
+  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
+}
+
+export function clearTokens(): void {
+  localStorage.removeItem(ACCESS_TOKEN_KEY)
+  localStorage.removeItem(REFRESH_TOKEN_KEY)
+}
+
+// =============================================================================
+// API Error
+// =============================================================================
 
 class ApiError extends Error {
   status: number
@@ -71,11 +104,17 @@ class ApiError extends Error {
   }
 }
 
+// =============================================================================
+// Fetch with Auth
+// =============================================================================
+
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
+  const token = getAccessToken()
   const response = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   })
@@ -532,6 +571,32 @@ export async function getNotificationLog(
     offset: filters.offset,
   })
   return fetchJson<NotificationLogEntry[]>(`${API_BASE}/notifications/log${query}`)
+}
+
+// =============================================================================
+// Authentication API
+// =============================================================================
+
+export async function getAuthStatus(): Promise<AuthStatusResponse> {
+  return fetchJson<AuthStatusResponse>('/api/v1/auth/status')
+}
+
+export async function getCurrentUser(): Promise<AuthStatusResponse> {
+  return fetchJson<AuthStatusResponse>('/api/v1/auth/me')
+}
+
+export async function login(request: LoginRequest): Promise<TokenResponse> {
+  return fetchJson<TokenResponse>('/api/v1/auth/login', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
+}
+
+export async function refreshTokens(request: RefreshTokenRequest): Promise<TokenResponse> {
+  return fetchJson<TokenResponse>('/api/v1/auth/refresh', {
+    method: 'POST',
+    body: JSON.stringify(request),
+  })
 }
 
 export { ApiError }

@@ -614,3 +614,42 @@ export interface NotificationLogFilters {
   limit?: number
   offset?: number
 }
+
+// =============================================================================
+// Authentication Types
+// =============================================================================
+
+export interface AuthUser {
+  id: number
+  email: string
+  username: string | null
+  display_name: string | null
+  external_provider: string | null
+  is_active: boolean
+  is_superuser: boolean
+  last_login_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface TokenResponse {
+  access_token: string
+  refresh_token: string
+  token_type: string
+  expires_in: number
+}
+
+export interface AuthStatusResponse {
+  auth_mode: string
+  is_authenticated: boolean
+  user: AuthUser | null
+}
+
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+export interface RefreshTokenRequest {
+  refresh_token: string
+}
