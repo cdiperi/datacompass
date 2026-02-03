@@ -407,6 +407,14 @@ Phase 10: Governance   → Classification, ownership, RBAC
 
 ## Troubleshooting
 
+### Migration Error: "table already exists"
+
+If `alembic upgrade head` fails with `sqlite3.OperationalError: table X already exists`, the alembic version is out of sync with actual schema. Fix with:
+
+```bash
+.venv/bin/alembic stamp head  # Mark DB as current (tables already exist)
+```
+
 ### Tests Failing
 
 ```bash
