@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom'
 import { Typography, Spin, Alert, Breadcrumb, Tabs, Descriptions, Table, Tag, Empty, Space, Input, Button, message } from 'antd'
-import { HomeOutlined, PartitionOutlined, TableOutlined, InfoCircleOutlined, SafetyCertificateOutlined, EditOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons'
+import { HomeOutlined, PartitionOutlined, InfoCircleOutlined, SafetyCertificateOutlined, EditOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons'
 import { useState } from 'react'
 import type { ColumnsType } from 'antd/es/table'
 import { useObject, useUpdateObject } from '../hooks/useObjects'
@@ -57,27 +57,17 @@ export function ObjectDetailPage() {
       key: 'overview',
       label: (
         <span>
-          <InfoCircleOutlined />
+          <InfoCircleOutlined style={{ marginRight: 8 }} />
           Overview
         </span>
       ),
       children: <OverviewTab object={objectData} />,
     },
     {
-      key: 'columns',
-      label: (
-        <span>
-          <TableOutlined />
-          Columns ({objectData.columns.length})
-        </span>
-      ),
-      children: <ColumnsTab columns={objectData.columns} />,
-    },
-    {
       key: 'lineage',
       label: (
         <span>
-          <PartitionOutlined />
+          <PartitionOutlined style={{ marginRight: 8 }} />
           Lineage
         </span>
       ),
@@ -87,7 +77,7 @@ export function ObjectDetailPage() {
       key: 'data-quality',
       label: (
         <span>
-          <SafetyCertificateOutlined />
+          <SafetyCertificateOutlined style={{ marginRight: 8 }} />
           Data Quality
         </span>
       ),
@@ -108,9 +98,14 @@ export function ObjectDetailPage() {
         ]}
       />
 
-      <Title level={2}>
-        {objectData.object_name}
-      </Title>
+      <Space align="center" style={{ marginBottom: 16 }}>
+        <Title level={2} style={{ margin: 0 }}>
+          {objectData.object_name}
+        </Title>
+        <Tag color={objectData.object_type === 'VIEW' ? 'purple' : 'blue'}>
+          {objectData.object_type}
+        </Tag>
+      </Space>
 
       <Tabs defaultActiveKey="overview" items={tabItems} />
     </div>
@@ -232,36 +227,29 @@ function OverviewTab({ object }: OverviewTabProps) {
         />
       </div>
 
-      {/* Metadata in a clean layout */}
-      <Descriptions bordered column={{ xs: 1, sm: 2 }} size="small">
-        <Descriptions.Item label="Type">
-          <Tag color={object.object_type === 'VIEW' ? 'purple' : 'blue'}>
-            {object.object_type}
-          </Tag>
-        </Descriptions.Item>
-        <Descriptions.Item label="Source">{object.source_name}</Descriptions.Item>
-        <Descriptions.Item label="Schema">{object.schema_name}</Descriptions.Item>
-        <Descriptions.Item label="Columns">{object.columns.length}</Descriptions.Item>
-        <Descriptions.Item label="Created">
-          {new Date(object.created_at).toLocaleDateString()}
-        </Descriptions.Item>
-        <Descriptions.Item label="Last Updated">
-          {new Date(object.updated_at).toLocaleDateString()}
-        </Descriptions.Item>
-      </Descriptions>
+      {/* Columns */}
+      <div>
+        <ColumnsTable columns={object.columns} />
+      </div>
     </div>
   )
 }
 
 // =============================================================================
-// Columns Tab
+// Columns Table
 // =============================================================================
 
-interface ColumnsTabProps {
+interface ColumnsTableProps {
   columns: ColumnSummary[]
 }
 
-function ColumnsTab({ columns }: ColumnsTabProps) {
+function ColumnsTable({ columns }: ColumnsTableProps) {
+  const [searchTerm, setSearchTerm] = useState('')
+
+  const filteredColumns = columns.filter((col) =>
+    col.column_name.toLowerCase().includes(searchTerm.toLowerCase())
+  )
+
   const columnTableColumns: ColumnsType<ColumnSummary> = [
     {
       title: 'Column Name',
@@ -310,13 +298,26 @@ function ColumnsTab({ columns }: ColumnsTabProps) {
   }
 
   return (
-    <Table
-      dataSource={columns}
-      columns={columnTableColumns}
-      rowKey="column_name"
-      pagination={columns.length > 20 ? { pageSize: 20 } : false}
-      size="small"
-    />
+    <div>
+      <Space align="center" style={{ marginBottom: 8 }}>
+        <Title level={5} style={{ margin: 0 }}>Columns ({columns.length})</Title>
+        <Input
+          placeholder="Search..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          allowClear
+          size="small"
+          style={{ width: 160 }}
+        />
+      </Space>
+      <Table
+        dataSource={filteredColumns}
+        columns={columnTableColumns}
+        rowKey="column_name"
+        pagination={filteredColumns.length > 20 ? { pageSize: 20 } : false}
+        size="small"
+      />
+    </div>
   )
 }
 
