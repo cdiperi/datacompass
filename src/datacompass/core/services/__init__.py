@@ -69,6 +69,11 @@ from datacompass.core.services.auth_service import (
     UserExistsError,
     UserNotFoundError,
 )
+from datacompass.core.services.usage_service import (
+    UsageService,
+    UsageServiceError,
+    ObjectNotFoundError as UsageObjectNotFoundError,
+)
 
 __all__ = [
     # Source service
@@ -129,4 +134,8 @@ __all__ = [
     "UserExistsError",
     "APIKeyNotFoundError",
     "TokenExpiredError",
+    # Usage service
+    "UsageService",
+    "UsageServiceError",
+    "UsageObjectNotFoundError",
 ]

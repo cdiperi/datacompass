@@ -105,6 +105,14 @@ from datacompass.core.models.auth import (
     UserCreate,
     UserResponse,
 )
+from datacompass.core.models.usage import (
+    HotTableItem,
+    UsageCollectResult,
+    UsageHubSummary,
+    UsageMetric,
+    UsageMetricDetailResponse,
+    UsageMetricResponse,
+)
 
 __all__ = [
     # SQLAlchemy models
@@ -210,4 +218,11 @@ __all__ = [
     "TokenResponse",
     "RefreshTokenRequest",
     "AuthStatusResponse",
+    # Usage metrics
+    "UsageMetric",
+    "UsageMetricResponse",
+    "UsageMetricDetailResponse",
+    "UsageCollectResult",
+    "HotTableItem",
+    "UsageHubSummary",
 ]

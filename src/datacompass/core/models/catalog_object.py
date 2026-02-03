@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from datacompass.core.models.dependency import Dependency
     from datacompass.core.models.deprecation import Deprecation
     from datacompass.core.models.dq import DQConfig
+    from datacompass.core.models.usage import UsageMetric
 
 
 class CatalogObject(Base, TimestampMixin, SoftDeleteMixin):
@@ -62,6 +63,12 @@ class CatalogObject(Base, TimestampMixin, SoftDeleteMixin):
         foreign_keys="Deprecation.object_id",
         back_populates="object",
         cascade="all, delete-orphan",
+    )
+    usage_metrics: Mapped[list["UsageMetric"]] = relationship(
+        "UsageMetric",
+        back_populates="object",
+        cascade="all, delete-orphan",
+        order_by="UsageMetric.collected_at.desc()",
     )
 
     __table_args__ = (

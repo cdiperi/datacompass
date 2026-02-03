@@ -16,6 +16,7 @@ from datacompass.api.routes import (
     schedules_router,
     search_router,
     sources_router,
+    usage_router,
 )
 
 
@@ -57,6 +58,7 @@ def create_app() -> FastAPI:
     app.include_router(deprecation_router, prefix="/api/v1")
     app.include_router(schedules_router, prefix="/api/v1")
     app.include_router(notifications_router, prefix="/api/v1")
+    app.include_router(usage_router, prefix="/api/v1")
 
     return app
 

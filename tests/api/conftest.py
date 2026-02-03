@@ -30,6 +30,7 @@ from datacompass.core.models import (  # noqa: F401
     NotificationRule,
     Schedule,
     ScheduleRun,
+    UsageMetric,
 )
 from datacompass.core.models.auth import (  # noqa: F401
     APIKey,

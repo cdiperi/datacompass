@@ -109,6 +109,35 @@ class SourceAdapter(ABC):
         """
         pass
 
+    async def get_usage_metrics(
+        self,
+        objects: list[tuple[str, str]],
+    ) -> list[dict[str, Any]]:
+        """Fetch usage metrics for specified objects.
+
+        This is an optional method - not all adapters support usage metrics.
+        Override in subclasses that can provide usage data.
+
+        Args:
+            objects: List of (schema_name, object_name) tuples.
+
+        Returns:
+            List of dicts with keys:
+                - schema_name: str
+                - object_name: str
+                - row_count: int | None
+                - size_bytes: int | None
+                - read_count: int | None
+                - write_count: int | None
+                - last_read_at: datetime | None
+                - last_written_at: datetime | None
+                - distinct_users: int | None
+                - query_count: int | None
+                - source_metrics: dict | None (platform-specific data)
+        """
+        # Default implementation returns empty list (no metrics available)
+        return []
+
     async def __aenter__(self) -> "SourceAdapter":
         """Async context manager entry - establish connection."""
         await self.connect()

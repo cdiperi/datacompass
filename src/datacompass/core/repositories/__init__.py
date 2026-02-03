@@ -18,6 +18,7 @@ from datacompass.core.repositories.auth import (
     SessionRepository,
     UserRepository,
 )
+from datacompass.core.repositories.usage import UsageRepository
 
 __all__ = [
     "BaseRepository",
@@ -36,4 +37,6 @@ __all__ = [
     "APIKeyRepository",
     "SessionRepository",
     "RefreshTokenRepository",
+    # Usage repository
+    "UsageRepository",
 ]

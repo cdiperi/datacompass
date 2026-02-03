@@ -489,3 +489,89 @@ class PostgreSQLAdapter(SourceAdapter):
         """
 
         return await self.execute_query(query)
+
+    async def get_usage_metrics(
+        self,
+        objects: list[tuple[str, str]],
+    ) -> list[dict[str, Any]]:
+        """Fetch usage metrics for PostgreSQL objects.
+
+        Uses pg_stat_user_tables and pg_total_relation_size for metrics.
+        Note: pg_stat counters are cumulative since last stats reset.
+
+        Args:
+            objects: List of (schema_name, object_name) tuples.
+
+        Returns:
+            List of usage metric dicts.
+        """
+        if not objects:
+            return []
+
+        # Build filter for specific objects
+        object_filters = " OR ".join(
+            f"(schemaname = '{schema}' AND relname = '{name}')"
+            for schema, name in objects
+        )
+
+        # Get stats from pg_stat_user_tables
+        # seq_scan + idx_scan gives total read operations
+        # n_tup_ins + n_tup_upd + n_tup_del gives total write operations
+        query = f"""
+            SELECT
+                schemaname AS schema_name,
+                relname AS object_name,
+                n_live_tup AS row_count,
+                pg_total_relation_size(relid) AS size_bytes,
+                COALESCE(seq_scan, 0) + COALESCE(idx_scan, 0) AS read_count,
+                COALESCE(n_tup_ins, 0) + COALESCE(n_tup_upd, 0) + COALESCE(n_tup_del, 0) AS write_count,
+                last_vacuum,
+                last_autovacuum,
+                last_analyze,
+                last_autoanalyze,
+                seq_scan,
+                seq_tup_read,
+                idx_scan,
+                idx_tup_fetch,
+                n_tup_ins,
+                n_tup_upd,
+                n_tup_del,
+                n_tup_hot_upd,
+                n_dead_tup
+            FROM pg_stat_user_tables
+            WHERE {object_filters}
+        """
+
+        rows = await self.execute_query(query)
+
+        results = []
+        for row in rows:
+            results.append({
+                "schema_name": row["schema_name"],
+                "object_name": row["object_name"],
+                "row_count": row.get("row_count"),
+                "size_bytes": row.get("size_bytes"),
+                "read_count": row.get("read_count"),
+                "write_count": row.get("write_count"),
+                "last_read_at": None,  # PostgreSQL doesn't track this directly
+                "last_written_at": None,  # PostgreSQL doesn't track this directly
+                "distinct_users": None,  # Requires pg_stat_statements extension
+                "query_count": None,  # Requires pg_stat_statements extension
+                "source_metrics": {
+                    "seq_scan": row.get("seq_scan"),
+                    "seq_tup_read": row.get("seq_tup_read"),
+                    "idx_scan": row.get("idx_scan"),
+                    "idx_tup_fetch": row.get("idx_tup_fetch"),
+                    "n_tup_ins": row.get("n_tup_ins"),
+                    "n_tup_upd": row.get("n_tup_upd"),
+                    "n_tup_del": row.get("n_tup_del"),
+                    "n_tup_hot_upd": row.get("n_tup_hot_upd"),
+                    "n_dead_tup": row.get("n_dead_tup"),
+                    "last_vacuum": str(row["last_vacuum"]) if row.get("last_vacuum") else None,
+                    "last_autovacuum": str(row["last_autovacuum"]) if row.get("last_autovacuum") else None,
+                    "last_analyze": str(row["last_analyze"]) if row.get("last_analyze") else None,
+                    "last_autoanalyze": str(row["last_autoanalyze"]) if row.get("last_autoanalyze") else None,
+                },
+            })
+
+        return results

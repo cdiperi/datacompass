@@ -53,6 +53,11 @@ from datacompass.core.services.auth_service import (
     APIKeyNotFoundError,
     TokenExpiredError,
 )
+from datacompass.core.services.usage_service import (
+    UsageService,
+    UsageServiceError,
+    ObjectNotFoundError as UsageObjectNotFoundError,
+)
 from datacompass.core.models.auth import UserCreate
 
 # Console instances for stdout/stderr
@@ -135,6 +140,10 @@ auth_apikey_app = typer.Typer(
     help="API key management.",
     no_args_is_help=True,
 )
+usage_app = typer.Typer(
+    help="Usage metrics commands.",
+    no_args_is_help=True,
+)
 
 app.add_typer(source_app, name="source")
 app.add_typer(objects_app, name="objects")
@@ -147,6 +156,7 @@ app.add_typer(notify_app, name="notify")
 app.add_typer(auth_app, name="auth")
 auth_app.add_typer(auth_user_app, name="user")
 auth_app.add_typer(auth_apikey_app, name="apikey")
+app.add_typer(usage_app, name="usage")
 
 
 def version_callback(value: bool) -> None:
@@ -3493,6 +3503,219 @@ def auth_user_set_superuser(
     except UserNotFoundError:
         err_console.print(f"[red]Error:[/red] User not found: {email!r}")
         raise typer.Exit(1) from None
+    except Exception as e:
+        code = handle_error(e)
+        raise typer.Exit(code) from None
+
+
+# =============================================================================
+# Usage commands
+# =============================================================================
+
+
+@usage_app.command("collect")
+def usage_collect(
+    source: Annotated[str, typer.Argument(help="Name of the source to collect metrics from.")],
+    format: Annotated[
+        OutputFormat, typer.Option("--format", "-f", help="Output format.")
+    ] = OutputFormat.json,
+) -> None:
+    """Collect usage metrics for all objects in a source.
+
+    Examples:
+        datacompass usage collect demo
+    """
+    try:
+        with get_session() as session:
+            service = UsageService(session)
+
+            with console.status(f"Collecting usage metrics from [bold]{source}[/bold]..."):
+                result = service.collect_metrics(source)
+                session.commit()
+
+            if format == OutputFormat.table:
+                console.print(f"\n[bold]Usage Collection Complete[/bold]")
+                table = Table(show_header=False)
+                table.add_column("Key", style="bold")
+                table.add_column("Value")
+                table.add_row("Source", result.source_name)
+                table.add_row("Collected", str(result.collected_count))
+                table.add_row("Skipped", str(result.skipped_count))
+                table.add_row("Errors", str(result.error_count))
+                table.add_row("Timestamp", str(result.collected_at)[:19])
+                console.print(table)
+            else:
+                output_result(result.model_dump(), format)
+
+    except Exception as e:
+        code = handle_error(e)
+        raise typer.Exit(code) from None
+
+
+@usage_app.command("show")
+def usage_show(
+    object_id: Annotated[
+        str, typer.Argument(help="Object identifier (source.schema.name or ID).")
+    ],
+    history: Annotated[
+        int | None, typer.Option("--history", "-h", help="Number of days of history to show.")
+    ] = None,
+    limit: Annotated[
+        int | None, typer.Option("--limit", "-l", help="Maximum number of records (for history).")
+    ] = None,
+    format: Annotated[
+        OutputFormat, typer.Option("--format", "-f", help="Output format.")
+    ] = OutputFormat.json,
+) -> None:
+    """Show usage metrics for an object.
+
+    Examples:
+        datacompass usage show demo.analytics.customers
+        datacompass usage show demo.analytics.customers --history 30
+    """
+    try:
+        with get_session() as session:
+            service = UsageService(session)
+
+            if history is not None:
+                # Get historical metrics
+                metrics = service.get_usage_history(
+                    object_id,
+                    days=history,
+                    limit=limit,
+                )
+
+                if not metrics:
+                    console.print(f"[dim]No usage metrics found for {object_id}[/dim]")
+                    return
+
+                if format == OutputFormat.table:
+                    table = Table()
+                    table.add_column("Collected At")
+                    table.add_column("Row Count", justify="right")
+                    table.add_column("Size (MB)", justify="right")
+                    table.add_column("Reads", justify="right")
+                    table.add_column("Writes", justify="right")
+
+                    for m in metrics:
+                        size_mb = f"{m.size_bytes / (1024*1024):.2f}" if m.size_bytes else "-"
+                        table.add_row(
+                            str(m.collected_at)[:19],
+                            str(m.row_count) if m.row_count is not None else "-",
+                            size_mb,
+                            str(m.read_count) if m.read_count is not None else "-",
+                            str(m.write_count) if m.write_count is not None else "-",
+                        )
+                    console.print(table)
+                else:
+                    result = [m.model_dump() for m in metrics]
+                    output_result(result, format)
+            else:
+                # Get latest metrics
+                metric = service.get_object_usage(object_id)
+
+                if metric is None:
+                    console.print(f"[dim]No usage metrics found for {object_id}[/dim]")
+                    return
+
+                if format == OutputFormat.table:
+                    console.print(f"\n[bold]Usage Metrics:[/bold] {metric.source_name}.{metric.schema_name}.{metric.object_name}\n")
+                    table = Table(show_header=False)
+                    table.add_column("Metric", style="bold")
+                    table.add_column("Value")
+                    table.add_row("Collected At", str(metric.collected_at)[:19])
+                    table.add_row("Row Count", str(metric.row_count) if metric.row_count is not None else "-")
+                    size_mb = f"{metric.size_bytes / (1024*1024):.2f} MB" if metric.size_bytes else "-"
+                    table.add_row("Size", size_mb)
+                    table.add_row("Read Count", str(metric.read_count) if metric.read_count is not None else "-")
+                    table.add_row("Write Count", str(metric.write_count) if metric.write_count is not None else "-")
+                    if metric.last_read_at:
+                        table.add_row("Last Read", str(metric.last_read_at)[:19])
+                    if metric.last_written_at:
+                        table.add_row("Last Written", str(metric.last_written_at)[:19])
+                    if metric.distinct_users is not None:
+                        table.add_row("Distinct Users", str(metric.distinct_users))
+                    if metric.query_count is not None:
+                        table.add_row("Query Count", str(metric.query_count))
+                    console.print(table)
+                else:
+                    output_result(metric.model_dump(), format)
+
+    except UsageObjectNotFoundError:
+        err_console.print(f"[red]Error:[/red] Object not found: {object_id!r}")
+        err_console.print("[dim]Use 'datacompass objects list' to see available objects.[/dim]")
+        raise typer.Exit(1) from None
+    except Exception as e:
+        code = handle_error(e)
+        raise typer.Exit(code) from None
+
+
+@usage_app.command("hot")
+def usage_hot(
+    source: Annotated[
+        str | None, typer.Option("--source", "-s", help="Filter by source name.")
+    ] = None,
+    days: Annotated[
+        int, typer.Option("--days", "-d", help="Look back period in days.")
+    ] = 7,
+    limit: Annotated[
+        int, typer.Option("--limit", "-l", help="Maximum number of results.")
+    ] = 20,
+    order_by: Annotated[
+        str, typer.Option("--order-by", "-o", help="Metric to order by (read_count, write_count, row_count, size_bytes).")
+    ] = "read_count",
+    format: Annotated[
+        OutputFormat, typer.Option("--format", "-f", help="Output format.")
+    ] = OutputFormat.json,
+) -> None:
+    """Show the most accessed tables (hot tables).
+
+    Examples:
+        datacompass usage hot
+        datacompass usage hot --source demo --days 30
+        datacompass usage hot --order-by size_bytes --limit 10
+    """
+    try:
+        with get_session() as session:
+            service = UsageService(session)
+            hot_tables = service.get_hot_tables(
+                source_name=source,
+                days=days,
+                limit=limit,
+                order_by=order_by,
+            )
+
+            if not hot_tables:
+                console.print("[dim]No usage metrics found.[/dim]")
+                return
+
+            if format == OutputFormat.table:
+                table = Table()
+                table.add_column("#", justify="right")
+                table.add_column("Object")
+                table.add_column("Row Count", justify="right")
+                table.add_column("Size (MB)", justify="right")
+                table.add_column("Reads", justify="right")
+                table.add_column("Writes", justify="right")
+
+                for i, item in enumerate(hot_tables, 1):
+                    obj_name = f"{item.source_name}.{item.schema_name}.{item.object_name}"
+                    size_mb = f"{item.size_bytes / (1024*1024):.2f}" if item.size_bytes else "-"
+                    table.add_row(
+                        str(i),
+                        obj_name,
+                        str(item.row_count) if item.row_count is not None else "-",
+                        size_mb,
+                        str(item.read_count) if item.read_count is not None else "-",
+                        str(item.write_count) if item.write_count is not None else "-",
+                    )
+
+                console.print(f"\n[bold]Hot Tables[/bold] (last {days} days, ordered by {order_by})\n")
+                console.print(table)
+            else:
+                result = [item.model_dump() for item in hot_tables]
+                output_result(result, format)
+
     except Exception as e:
         code = handle_error(e)
         raise typer.Exit(code) from None

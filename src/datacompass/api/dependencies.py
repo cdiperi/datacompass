@@ -26,6 +26,7 @@ from datacompass.core.services.dq_service import DQService
 from datacompass.core.services.lineage_service import LineageService
 from datacompass.core.services.notification_service import NotificationService
 from datacompass.core.services.scheduling_service import SchedulingService
+from datacompass.core.services.usage_service import UsageService
 
 # Flag to track if database has been initialized
 _db_initialized = False
@@ -114,6 +115,11 @@ def get_notification_service(session: DbSession) -> NotificationService:
 def get_auth_service(session: DbSession) -> AuthService:
     """Get an AuthService instance with the current session."""
     return AuthService(session)
+
+
+def get_usage_service(session: DbSession) -> UsageService:
+    """Get a UsageService instance with the current session."""
+    return UsageService(session)
 
 
 # Security schemes
@@ -268,6 +274,7 @@ DeprecationServiceDep = Annotated[DeprecationService, Depends(get_deprecation_se
 SchedulingServiceDep = Annotated[SchedulingService, Depends(get_scheduling_service)]
 NotificationServiceDep = Annotated[NotificationService, Depends(get_notification_service)]
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
+UsageServiceDep = Annotated[UsageService, Depends(get_usage_service)]
 
 # Auth type aliases
 CurrentUser = Annotated[User | None, Depends(get_current_user_optional)]

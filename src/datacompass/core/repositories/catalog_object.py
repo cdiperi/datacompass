@@ -71,6 +71,56 @@ class CatalogObjectRepository(BaseRepository[CatalogObject]):
         )
         return self.session.scalar(stmt)
 
+    def get_by_name(
+        self,
+        source_id: int,
+        schema_name: str,
+        object_name: str,
+    ) -> CatalogObject | None:
+        """Get an object by source, schema, and name.
+
+        Alias for get_by_qualified_name for clarity.
+
+        Args:
+            source_id: ID of the data source.
+            schema_name: Schema name.
+            object_name: Object name.
+
+        Returns:
+            CatalogObject instance or None if not found.
+        """
+        return self.get_by_qualified_name(source_id, schema_name, object_name)
+
+    def find_by_schema_and_name(
+        self,
+        schema_name: str,
+        object_name: str,
+    ) -> CatalogObject | None:
+        """Find an object by schema and name across all sources.
+
+        Returns the first matching object found.
+
+        Args:
+            schema_name: Schema name.
+            object_name: Object name.
+
+        Returns:
+            CatalogObject instance or None if not found.
+        """
+        stmt = (
+            select(CatalogObject)
+            .options(joinedload(CatalogObject.source))
+            .where(
+                and_(
+                    CatalogObject.schema_name == schema_name,
+                    CatalogObject.object_name == object_name,
+                    CatalogObject.deleted_at.is_(None),
+                )
+            )
+            .limit(1)
+        )
+        return self.session.scalar(stmt)
+
     def upsert(
         self,
         source_id: int,

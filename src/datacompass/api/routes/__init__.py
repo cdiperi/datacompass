@@ -10,6 +10,7 @@ from datacompass.api.routes.objects import router as objects_router
 from datacompass.api.routes.schedules import router as schedules_router
 from datacompass.api.routes.search import router as search_router
 from datacompass.api.routes.sources import router as sources_router
+from datacompass.api.routes.usage import router as usage_router
 
 __all__ = [
     "auth_router",
@@ -22,4 +23,5 @@ __all__ = [
     "schedules_router",
     "search_router",
     "sources_router",
+    "usage_router",
 ]
