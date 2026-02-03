@@ -1,7 +1,113 @@
 # Data Compass - Project Status
 
-Last updated: 2026-02-01
-Current Phase: **Phase 7 Complete** - Ready for Phase 8
+Last updated: 2026-02-03
+Current Phase: **Phase 9.2 Complete** - CLI Authentication Implemented
+
+## Completed: Phase 9.1 & 9.2 - Core Auth Infrastructure & CLI Authentication
+
+### Deliverables
+- [x] Database schema for users, api_keys, sessions, refresh_tokens (migration 007)
+- [x] `User`, `APIKey`, `Session`, `RefreshToken` SQLAlchemy models
+- [x] `UserRepository`, `APIKeyRepository`, `SessionRepository`, `RefreshTokenRepository` for CRUD
+- [x] Pluggable auth provider system (`LocalAuthProvider`, `DisabledAuthProvider`)
+- [x] `AuthService` for authentication, token management, user/API key management
+- [x] JWT-based access tokens with bcrypt password hashing
+- [x] Refresh token rotation for extended sessions
+- [x] CLI commands: `auth login/logout/whoami/status`, `auth user create/list/show/disable/enable/set-superuser`, `auth apikey create/list/revoke`
+- [x] Credential storage (`~/.datacompass/.credentials`) with secure permissions
+- [x] Environment variable support (`DATACOMPASS_API_KEY`, `DATACOMPASS_ACCESS_TOKEN`)
+
+### Key Decisions Made
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Auth mode | Configurable (disabled/local/oidc/ldap) | Default disabled for backwards compatibility |
+| Password hashing | bcrypt | Industry standard, secure |
+| Token format | JWT with HS256 | Stateless access tokens, easy validation |
+| API keys | Prefix + hash storage | Show prefix for identification, hash for security |
+| Refresh tokens | Rotation on use | Enhanced security, detect token reuse |
+
+### New Files Added
+```
+src/datacompass/core/
+├── auth/
+│   ├── __init__.py                    # Provider factory
+│   └── providers/
+│       ├── __init__.py
+│       ├── base.py                    # AuthProvider ABC, AuthResult
+│       ├── local.py                   # Password auth + JWT
+│       └── disabled.py                # No-op for auth_mode=disabled
+├── models/auth.py                     # User, APIKey, Session, RefreshToken models
+├── repositories/auth.py               # CRUD operations
+├── services/auth_service.py           # Business logic
+└── migrations/versions/
+    └── 20260203_0007_007_authentication.py  # Alembic migration
+
+tests/
+├── core/repositories/test_auth.py     # 21 repository tests
+├── core/services/test_auth_service.py # 26 service tests
+└── cli/test_auth_commands.py          # 25 CLI tests
+```
+
+### CLI Commands
+```bash
+# Authentication
+datacompass auth login --email user@example.com
+datacompass auth logout
+datacompass auth whoami
+datacompass auth status
+
+# User management (admin)
+datacompass auth user create admin@example.com --password --superuser
+datacompass auth user list [--include-inactive]
+datacompass auth user show admin@example.com
+datacompass auth user disable user@example.com
+datacompass auth user enable user@example.com
+datacompass auth user set-superuser user@example.com [--remove]
+
+# API key management
+datacompass auth apikey create "CI/CD Key" --scopes read,write --expires-days 30
+datacompass auth apikey list
+datacompass auth apikey revoke <key-id>
+```
+
+### Configuration
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATACOMPASS_AUTH_MODE` | `disabled` | Auth mode: disabled, local, oidc, ldap |
+| `DATACOMPASS_AUTH_SECRET_KEY` | (random) | JWT signing key (change in production) |
+| `DATACOMPASS_AUTH_ACCESS_TOKEN_EXPIRE_MINUTES` | `30` | Access token TTL |
+| `DATACOMPASS_AUTH_REFRESH_TOKEN_EXPIRE_DAYS` | `7` | Refresh token TTL |
+| `DATACOMPASS_AUTH_AUTO_REGISTER` | `false` | Auto-register on first OIDC/LDAP login |
+
+### Tests
+- **442 backend tests passing** (up from 368)
+- 21 new repository tests
+- 26 new service tests
+- 25 new CLI tests
+
+### Deferred to Later
+- OIDC provider implementation (Phase 9.3)
+- LDAP provider implementation (Phase 9.3)
+- API middleware for authenticated endpoints (Phase 9.4)
+- Frontend authentication UI (Phase 9.5)
+- Role-based access control (Phase 10)
+
+---
+
+## Completed: Phase 8 - Scheduling & Notifications (Scaffolded)
+
+### Deliverables
+- [x] Database schema for schedules, schedule_runs, notification_channels, notification_rules, notification_log (migration 006)
+- [x] `Schedule`, `ScheduleRun`, `NotificationChannel`, `NotificationRule`, `NotificationLog` SQLAlchemy models
+- [x] `SchedulingRepository`, `NotificationRepository` for CRUD operations
+- [x] `SchedulingService`, `NotificationService` for business logic
+- [x] CLI commands: `schedule create/list/show/update/delete/enable/disable`, `notify channel/rule/log/apply`
+- [x] API endpoints: `/api/v1/schedules`, `/api/v1/notifications`
+
+### Note
+Phase 8 is scaffolded with full CRUD operations but the actual scheduler daemon and notification delivery are not yet implemented. The infrastructure is in place for scheduling jobs and managing notification rules.
+
+---
 
 ## Completed: Phase 7 - Deprecation Campaign Management
 
@@ -82,10 +188,9 @@ datacompass deprecate check <campaign-id> [--depth 3] [--format json|table]
 | GET | `/api/v1/deprecations/hub/summary` | Hub summary dashboard |
 
 ### Tests
-- **309 backend tests passing** (up from 264)
-- 18 new repository tests
-- 14 new service tests
-- 13 new API tests
+- 18 repository tests
+- 14 service tests
+- 13 API tests
 
 ### Deferred to Later
 - Notifications when target date approaches (Phase 8)
@@ -403,18 +508,27 @@ data-compass/
 
 ---
 
-## Next: Phase 8 - Scheduling & Notifications
+## Next: Phase 9.3+ - Extended Authentication & Production Hardening
 
-### Goal
-Automate catalog scans, DQ runs, and deprecation deadline notifications.
+### Phase 9.3: External Auth Providers
+- OIDC provider implementation
+- LDAP provider implementation
+- Auto-registration flows
 
-### Deliverables
-- Scheduled catalog scans
-- Scheduled DQ metric collection
-- Deprecation deadline notifications
-- Event-driven triggers
-- CLI commands for schedule management
-- Web UI for schedule configuration
+### Phase 9.4: API Authentication
+- JWT middleware for API endpoints
+- API key authentication for routes
+- Permission checking
+
+### Phase 9.5: Frontend Authentication
+- Login/logout UI
+- Session management
+- Protected routes
+
+### Phase 10: Governance & RBAC
+- Role-based access control
+- Object ownership
+- Data classification
 
 ---
 
@@ -465,3 +579,7 @@ Current: `0.1.0` (defined in `src/datacompass/__init__.py`)
 - `DATACOMPASS_DATABASE_URL` - Default: `sqlite:///{data_dir}/datacompass.db`
 - `DATACOMPASS_DEFAULT_FORMAT` - Default: `json` (options: json, table)
 - `DATACOMPASS_LOG_LEVEL` - Default: `INFO`
+- `DATACOMPASS_AUTH_MODE` - Default: `disabled` (options: disabled, local, oidc, ldap)
+- `DATACOMPASS_AUTH_SECRET_KEY` - JWT signing key (auto-generated if not set)
+- `DATACOMPASS_API_KEY` - API key for authentication (CI/CD)
+- `DATACOMPASS_ACCESS_TOKEN` - Direct access token (scripting)
