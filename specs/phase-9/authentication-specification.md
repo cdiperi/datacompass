@@ -1789,22 +1789,35 @@ DATACOMPASS_AUTH_PROVIDER_NAME=Okta
 
 ## 8. Implementation Plan
 
-### Phase 9.1: Core Auth Infrastructure
-- [ ] Create migration 007_authentication
-- [ ] Implement User, APIKey models
-- [ ] Implement UserRepository, APIKeyRepository
-- [ ] Implement AuthProvider interface
-- [ ] Implement LocalAuthProvider
-- [ ] Implement AuthService
-- [ ] Add auth settings to configuration
+### Phase 9.1: Core Auth Infrastructure ✅ COMPLETE
+- [x] Create migration 007_authentication
+- [x] Implement User, APIKey, Session, RefreshToken models
+- [x] Implement UserRepository, APIKeyRepository, SessionRepository, RefreshTokenRepository
+- [x] Implement AuthProvider interface
+- [x] Implement LocalAuthProvider
+- [x] Implement DisabledAuthProvider
+- [x] Implement AuthService
+- [x] Add auth settings to configuration
 
-### Phase 9.2: CLI Authentication
-- [ ] Implement `datacompass auth login` (local)
-- [ ] Implement `datacompass auth logout`
-- [ ] Implement `datacompass auth whoami`
-- [ ] Implement `datacompass auth apikey create/list/revoke`
-- [ ] Implement credential storage (secure file)
-- [ ] Add auth headers to CLI API calls
+**Implementation Notes:**
+- Used `str` with pattern validation instead of `EmailStr` (avoids email-validator dependency)
+- Provider methods are synchronous (not async) - simpler for local auth
+- API keys use SHA-256 hashing (faster) instead of bcrypt
+- Added `auth_auto_register` setting for future OIDC support
+
+### Phase 9.2: CLI Authentication ✅ COMPLETE
+- [x] Implement `datacompass auth login` (local)
+- [x] Implement `datacompass auth logout`
+- [x] Implement `datacompass auth whoami`
+- [x] Implement `datacompass auth status`
+- [x] Implement `datacompass auth apikey create/list/revoke`
+- [x] Implement `datacompass auth user create/list/show/disable/enable/set-superuser`
+- [x] Implement credential storage (secure file with 0600 permissions)
+- [x] Support `DATACOMPASS_API_KEY` and `DATACOMPASS_ACCESS_TOKEN` env vars
+
+**Implementation Notes:**
+- CLI commands integrated directly into `cli/main.py` (not separate module)
+- User management commands added for admin operations
 
 ### Phase 9.3: API Authentication
 - [ ] Implement auth middleware (Bearer + API key)
@@ -1830,9 +1843,10 @@ DATACOMPASS_AUTH_PROVIDER_NAME=Okta
 - [ ] Add user menu with logout
 
 ### Phase 9.6: Testing & Documentation
-- [ ] Unit tests for AuthService
-- [ ] Integration tests for auth endpoints
-- [ ] CLI tests for auth commands
+- [x] Unit tests for AuthService (26 tests)
+- [x] Repository tests for auth (21 tests)
+- [x] CLI tests for auth commands (25 tests)
+- [ ] Integration tests for auth API endpoints
 - [ ] Update API documentation
 - [ ] Write user guide for auth configuration
 
@@ -1847,8 +1861,8 @@ DATACOMPASS_AUTH_PROVIDER_NAME=Okta
 
 ### 9.2 Token Security
 - JWT access tokens: short-lived (30 min default)
-- Refresh tokens: stored hashed, support rotation
-- API keys: hashed with bcrypt, prefix for identification
+- Refresh tokens: stored as SHA-256 hash, support rotation
+- API keys: stored as SHA-256 hash, 8-char prefix for identification (SHA-256 chosen over bcrypt for faster validation on every request)
 
 ### 9.3 Session Security
 - HttpOnly, Secure, SameSite cookies for web sessions
