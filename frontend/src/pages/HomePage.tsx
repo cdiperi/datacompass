@@ -11,8 +11,7 @@ export function HomePage() {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        paddingTop: '20vh',
-        padding: '20vh 24px 24px 24px',
+        padding: 'calc(110px + 21vh) 24px 24px 24px',
       }}
     >
       {/* Brand */}
