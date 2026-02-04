@@ -195,9 +195,9 @@ describe('ObjectDetailPage', () => {
 
     renderWithProviders('/catalog/prod/public/users')
 
-    // Row count should be displayed (1,000,000 formatted)
+    // Row count should be displayed (1M for 1,000,000)
     expect(screen.getByText('Row Count')).toBeInTheDocument()
-    expect(screen.getByText('1,000,000')).toBeInTheDocument()
+    expect(screen.getByText('1M')).toBeInTheDocument()
 
     // Size should be displayed (512 MB)
     expect(screen.getByText('Size')).toBeInTheDocument()

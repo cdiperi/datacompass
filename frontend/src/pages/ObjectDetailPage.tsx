@@ -32,11 +32,22 @@ function formatBytes(bytes: number | null | undefined): string {
 }
 
 /**
- * Format large numbers with commas
+ * Format large numbers with units (K, M, B) for readability
+ * Numbers <= 99,999 are shown with commas
+ * Numbers > 99,999 are shown with units
  */
 function formatNumber(num: number | null | undefined): string {
   if (num === null || num === undefined) return '-'
-  return num.toLocaleString()
+  if (num <= 99999) return num.toLocaleString()
+
+  const units = ['', 'K', 'M', 'B', 'T']
+  const k = 1000
+  const i = Math.floor(Math.log(num) / Math.log(k))
+  const value = num / Math.pow(k, i)
+
+  // Show 1 decimal place if needed, otherwise whole number
+  const formatted = value % 1 === 0 ? value.toString() : value.toFixed(1)
+  return `${formatted}${units[i]}`
 }
 
 export function ObjectDetailPage() {
