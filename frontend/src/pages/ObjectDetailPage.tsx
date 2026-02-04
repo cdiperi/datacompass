@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom'
-import { Typography, Spin, Alert, Breadcrumb, Tabs, Descriptions, Table, Tag, Empty, Space, Input, Button, message } from 'antd'
-import { HomeOutlined, PartitionOutlined, InfoCircleOutlined, SafetyCertificateOutlined, EditOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons'
+import { Typography, Spin, Alert, Breadcrumb, Tabs, Descriptions, Table, Tag, Empty, Space, Input, Button, message, Card, Statistic, Row, Col } from 'antd'
+import { HomeOutlined, PartitionOutlined, InfoCircleOutlined, SafetyCertificateOutlined, EditOutlined, CheckOutlined, CloseOutlined, DatabaseOutlined, HddOutlined } from '@ant-design/icons'
 import { useState } from 'react'
 import type { ColumnsType } from 'antd/es/table'
 import { useObject, useUpdateObject } from '../hooks/useObjects'
@@ -13,6 +13,31 @@ import type { CatalogObjectDetail, ColumnSummary, DQBreach, DQBreachStatus } fro
 
 const { Title, Text, Paragraph } = Typography
 const { TextArea } = Input
+
+/**
+ * Format bytes to human-readable size (KB, MB, GB, TB)
+ */
+function formatBytes(bytes: number | null | undefined): string {
+  if (bytes === null || bytes === undefined) return '-'
+  if (bytes === 0) return '0 B'
+
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const k = 1024
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  const value = bytes / Math.pow(k, i)
+
+  // Show 2 decimal places for MB and above, 0 for KB and B
+  const decimals = i >= 2 ? 2 : 0
+  return `${value.toFixed(decimals)} ${units[i]}`
+}
+
+/**
+ * Format large numbers with commas
+ */
+function formatNumber(num: number | null | undefined): string {
+  if (num === null || num === undefined) return '-'
+  return num.toLocaleString()
+}
 
 export function ObjectDetailPage() {
   const { source, schema, object } = useParams<{ source: string; schema: string; object: string }>()
@@ -172,8 +197,35 @@ function OverviewTab({ object }: OverviewTabProps) {
     }
   }
 
+  // Extract statistics from source_metadata
+  const rowCount = object.source_metadata?.row_count as number | null | undefined
+  const sizeBytes = object.source_metadata?.size_bytes as number | null | undefined
+  const hasStats = rowCount !== null && rowCount !== undefined || sizeBytes !== null && sizeBytes !== undefined
+
   return (
     <div>
+      {/* Statistics section - show row count and size if available */}
+      {hasStats && (
+        <Card size="small" style={{ marginBottom: 24 }}>
+          <Row gutter={48}>
+            <Col>
+              <Statistic
+                title="Row Count"
+                value={formatNumber(rowCount)}
+                prefix={<DatabaseOutlined />}
+              />
+            </Col>
+            <Col>
+              <Statistic
+                title="Size"
+                value={formatBytes(sizeBytes)}
+                prefix={<HddOutlined />}
+              />
+            </Col>
+          </Row>
+        </Card>
+      )}
+
       {/* Description section - prominent for non-technical users */}
       <div style={{ marginBottom: 24 }}>
         <Title level={5} style={{ marginBottom: 8 }}>Description</Title>

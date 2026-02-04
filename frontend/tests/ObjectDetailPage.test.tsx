@@ -35,6 +35,7 @@ const mockObject: CatalogObjectDetail = {
   object_type: 'TABLE',
   source_metadata: {
     row_count: 1000000,
+    size_bytes: 536870912, // 512 MB
   },
   user_metadata: {
     description: 'Contains user account information',
@@ -172,7 +173,7 @@ describe('ObjectDetailPage', () => {
     expect(screen.getByText('core')).toBeInTheDocument()
   })
 
-  it('shows Columns tab with column count', () => {
+  it('shows columns section with column count in Overview tab', () => {
     vi.spyOn(objectsHook, 'useObject').mockReturnValue({
       data: mockObject,
       isLoading: false,
@@ -181,8 +182,26 @@ describe('ObjectDetailPage', () => {
 
     renderWithProviders('/catalog/prod/public/users')
 
-    // The Columns tab label shows the count
-    expect(screen.getByRole('tab', { name: /Columns \(3\)/i })).toBeInTheDocument()
+    // The Columns section shows the count in the Overview tab
+    expect(screen.getByText('Columns (3)')).toBeInTheDocument()
+  })
+
+  it('displays row count and size statistics when available', () => {
+    vi.spyOn(objectsHook, 'useObject').mockReturnValue({
+      data: mockObject,
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof objectsHook.useObject>)
+
+    renderWithProviders('/catalog/prod/public/users')
+
+    // Row count should be displayed (1,000,000 formatted)
+    expect(screen.getByText('Row Count')).toBeInTheDocument()
+    expect(screen.getByText('1,000,000')).toBeInTheDocument()
+
+    // Size should be displayed (512 MB)
+    expect(screen.getByText('Size')).toBeInTheDocument()
+    expect(screen.getByText('512.00 MB')).toBeInTheDocument()
   })
 
   it('displays error when loading fails', () => {
