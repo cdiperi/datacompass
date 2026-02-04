@@ -132,6 +132,8 @@ class CatalogObjectSummary(BaseModel):
     object_type: str
     description: str | None = None
     column_count: int = 0
+    row_count: int | None = None
+    size_bytes: int | None = None
 
 
 class CatalogObjectDetail(CatalogObjectResponse):

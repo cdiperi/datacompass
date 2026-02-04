@@ -201,7 +201,7 @@ describe('ObjectDetailPage', () => {
 
     // Size should be displayed (512 MB)
     expect(screen.getByText('Size')).toBeInTheDocument()
-    expect(screen.getByText('512.00 MB')).toBeInTheDocument()
+    expect(screen.getByText('512.0 MB')).toBeInTheDocument()
   })
 
   it('displays error when loading fails', () => {

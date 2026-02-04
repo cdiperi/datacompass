@@ -272,6 +272,12 @@ class CatalogService:
                 if obj.source_metadata
                 else None,
                 column_count=self.column_repo.count_by_object(obj.id),
+                row_count=obj.source_metadata.get("row_count")
+                if obj.source_metadata
+                else None,
+                size_bytes=obj.source_metadata.get("size_bytes")
+                if obj.source_metadata
+                else None,
             )
             for obj in objects
         ]

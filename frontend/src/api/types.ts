@@ -56,6 +56,8 @@ export interface CatalogObjectSummary {
   object_type: string
   description: string | null
   column_count: number
+  row_count: number | null
+  size_bytes: number | null
 }
 
 export interface CatalogObjectDetail {

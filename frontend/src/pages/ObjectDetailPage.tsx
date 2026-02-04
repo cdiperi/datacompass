@@ -26,8 +26,8 @@ function formatBytes(bytes: number | null | undefined): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   const value = bytes / Math.pow(k, i)
 
-  // Show 2 decimal places for MB and above, 0 for KB and B
-  const decimals = i >= 2 ? 2 : 0
+  // Show 1 decimal place for KB and above, 0 for B
+  const decimals = i >= 1 ? 1 : 0
   return `${value.toFixed(decimals)} ${units[i]}`
 }
 
