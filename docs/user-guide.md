@@ -222,6 +222,8 @@ datacompass adapters list
 
 Current adapters:
 - `databricks` - Databricks Unity Catalog
+- `postgresql` - PostgreSQL databases
+- `snowflake` - Snowflake Data Cloud
 
 ## Cataloging Your Data
 

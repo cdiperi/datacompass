@@ -1,7 +1,43 @@
 # Data Compass - Project Status
 
-Last updated: 2026-02-03
+Last updated: 2026-02-04
 Current Phase: **Phase 9.5 Complete** - Frontend Authentication Implemented
+
+## Recent: Snowflake Adapter Added
+
+### New Files
+- `src/datacompass/core/adapters/snowflake.py` - Snowflake adapter implementation
+- `src/datacompass/core/adapters/schemas.py` - Added `SnowflakeConfig`
+- `tests/core/adapters/test_snowflake.py` - 20 unit tests + 6 integration tests
+- `pyproject.toml` - Added `snowflake` optional dependency
+
+### Features
+- Full metadata extraction (tables, views, materialized views, dynamic tables)
+- Column metadata with data types, nullability, and comments
+- Foreign key extraction for lineage (`get_foreign_keys()`)
+- View dependency extraction for lineage (`get_view_dependencies()`)
+- Usage metrics from `ACCOUNT_USAGE` with `INFORMATION_SCHEMA` fallback
+- Schema filtering with regex and exclude lists
+
+### Installation
+```bash
+pip install datacompass[snowflake]
+# or
+pip install snowflake-connector-python
+```
+
+### Usage
+```bash
+datacompass source add my-snowflake --type snowflake --config snowflake.yaml
+datacompass source test my-snowflake
+datacompass scan my-snowflake
+```
+
+### Test Results
+- 552 tests passing (20 new Snowflake tests)
+- 6 integration tests (skipped without credentials)
+
+---
 
 ## Completed: Phase 9.5 - Frontend Authentication
 

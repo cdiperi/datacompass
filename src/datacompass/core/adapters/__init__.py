@@ -16,8 +16,10 @@ from datacompass.core.adapters.schemas import (
     AuthMethod,
     DatabricksConfig,
     PostgreSQLConfig,
+    SnowflakeConfig,
     SSLMode,
 )
+from datacompass.core.adapters.snowflake import SnowflakeAdapter
 
 __all__ = [
     # Base
@@ -36,8 +38,10 @@ __all__ = [
     "AuthMethod",
     "DatabricksConfig",
     "PostgreSQLConfig",
+    "SnowflakeConfig",
     "SSLMode",
     # Adapters
     "DatabricksAdapter",
     "PostgreSQLAdapter",
+    "SnowflakeAdapter",
 ]

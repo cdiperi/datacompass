@@ -181,3 +181,62 @@ class DatabricksConfig(BaseModel):
             pass
 
         return self
+
+
+class SnowflakeConfig(BaseModel):
+    """Configuration for Snowflake connections.
+
+    Supports standard username/password authentication with account identifier.
+    """
+
+    # Connection settings
+    account: str = Field(
+        ...,
+        description="Snowflake account identifier (e.g., 'alxxhtq-tk90121')",
+    )
+    warehouse: str = Field(
+        ...,
+        description="Snowflake warehouse name (e.g., 'COMPUTE_WH')",
+    )
+    database: str = Field(
+        ...,
+        description="Database name to connect to",
+    )
+    username: str = Field(
+        ...,
+        description="Snowflake username",
+    )
+    password: SecretStr = Field(
+        ...,
+        description="Snowflake password",
+    )
+
+    # Optional role
+    role: str | None = Field(
+        default=None,
+        description="Snowflake role to use for the session",
+    )
+
+    # Filtering
+    schema_filter: str | None = Field(
+        default=None,
+        description="Regex pattern to filter schemas (e.g., '^(SALES|ANALYTICS)$')",
+    )
+    exclude_schemas: list[str] = Field(
+        default_factory=lambda: ["INFORMATION_SCHEMA"],
+        description="Schemas to exclude from scanning",
+    )
+
+    # Timeouts and options
+    connect_timeout: int = Field(
+        default=30,
+        description="Connection timeout in seconds",
+        ge=1,
+        le=300,
+    )
+    query_timeout: int = Field(
+        default=300,
+        description="Query timeout in seconds",
+        ge=1,
+        le=3600,
+    )
