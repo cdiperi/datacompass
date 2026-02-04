@@ -76,6 +76,7 @@ export function CollapsibleSidebar() {
   }
 
   const borderColor = mode === 'dark' ? '#303030' : '#f0f0f0'
+  const textColor = mode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.88)'
 
   // Build menu items with tooltips when collapsed
   const addTooltips = (items: typeof mainMenuItems) =>
@@ -122,16 +123,17 @@ export function CollapsibleSidebar() {
           padding: collapsed ? 0 : '0 16px',
           borderBottom: `1px solid ${borderColor}`,
           cursor: 'pointer',
+          color: textColor,
         }}
         onClick={toggleCollapsed}
       >
         {collapsed ? (
           <Tooltip title="Expand menu" placement="right">
-            <MenuUnfoldOutlined style={{ fontSize: 18 }} />
+            <MenuUnfoldOutlined style={{ fontSize: 18, color: textColor }} />
           </Tooltip>
         ) : (
           <>
-            <MenuFoldOutlined style={{ fontSize: 18, marginRight: 12 }} />
+            <MenuFoldOutlined style={{ fontSize: 18, marginRight: 12, color: textColor }} />
             <span style={{ fontWeight: 600, fontSize: 14 }}>Data Compass</span>
           </>
         )}
