@@ -1,9 +1,10 @@
 import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
-import { Typography, Spin, Empty } from 'antd'
+import { Typography, Spin, Empty, theme } from 'antd'
 import { TableOutlined, EyeOutlined, EnterOutlined } from '@ant-design/icons'
 import type { SearchResult } from '../api/types'
 
 const { Text } = Typography
+const { useToken } = theme
 
 interface SearchDropdownProps {
   results: SearchResult[]
@@ -43,6 +44,7 @@ export const SearchDropdown = forwardRef<SearchDropdownHandle, SearchDropdownPro
     { results, isLoading, isVisible, selectedIndex, onSelectResult, onClose },
     ref
   ) {
+    const { token } = useToken()
     const containerRef = useRef<HTMLDivElement>(null)
     const itemRefs = useRef<(HTMLDivElement | null)[]>([])
 
@@ -84,9 +86,9 @@ export const SearchDropdown = forwardRef<SearchDropdownHandle, SearchDropdownPro
           left: 0,
           right: 0,
           marginTop: 4,
-          background: '#fff',
+          background: token.colorBgElevated,
           borderRadius: 8,
-          boxShadow: '0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05)',
+          boxShadow: token.boxShadowSecondary,
           overflow: 'hidden',
           zIndex: 1000,
           maxHeight: 400,
@@ -113,8 +115,8 @@ export const SearchDropdown = forwardRef<SearchDropdownHandle, SearchDropdownPro
                 style={{
                   padding: '10px 16px',
                   cursor: 'pointer',
-                  background: index === selectedIndex ? '#f5f5f5' : 'transparent',
-                  borderBottom: index < Math.min(results.length, 7) - 1 ? '1px solid #f0f0f0' : 'none',
+                  background: index === selectedIndex ? token.colorBgTextHover : 'transparent',
+                  borderBottom: index < Math.min(results.length, 7) - 1 ? `1px solid ${token.colorBorderSecondary}` : 'none',
                   transition: 'background 0.15s ease',
                   display: 'flex',
                   alignItems: 'flex-start',
@@ -122,7 +124,7 @@ export const SearchDropdown = forwardRef<SearchDropdownHandle, SearchDropdownPro
                 }}
                 onMouseEnter={(e) => {
                   if (index !== selectedIndex) {
-                    e.currentTarget.style.background = '#fafafa'
+                    e.currentTarget.style.background = token.colorBgTextHover
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -179,8 +181,8 @@ export const SearchDropdown = forwardRef<SearchDropdownHandle, SearchDropdownPro
             <div
               style={{
                 padding: '8px 16px',
-                background: '#fafafa',
-                borderTop: '1px solid #f0f0f0',
+                background: token.colorFillTertiary,
+                borderTop: `1px solid ${token.colorBorderSecondary}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'flex-end',
@@ -190,7 +192,7 @@ export const SearchDropdown = forwardRef<SearchDropdownHandle, SearchDropdownPro
               <Text type="secondary" style={{ fontSize: 12 }}>
                 Press Enter to see all results
               </Text>
-              <EnterOutlined style={{ fontSize: 12, color: '#8c8c8c' }} />
+              <EnterOutlined style={{ fontSize: 12, color: token.colorTextSecondary }} />
             </div>
           </>
         )}
