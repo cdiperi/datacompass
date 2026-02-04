@@ -116,6 +116,9 @@ export const SearchDropdown = forwardRef<SearchDropdownHandle, SearchDropdownPro
                   background: index === selectedIndex ? '#f5f5f5' : 'transparent',
                   borderBottom: index < Math.min(results.length, 7) - 1 ? '1px solid #f0f0f0' : 'none',
                   transition: 'background 0.15s ease',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 12,
                 }}
                 onMouseEnter={(e) => {
                   if (index !== selectedIndex) {
@@ -128,43 +131,47 @@ export const SearchDropdown = forwardRef<SearchDropdownHandle, SearchDropdownPro
                   }
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 16 }}>{getObjectIcon(result.object_type)}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <Text strong style={{ fontSize: 14 }}>
-                        {result.object_name}
-                      </Text>
-                      <Text
-                        style={{
-                          fontSize: 11,
-                          padding: '1px 6px',
-                          borderRadius: 4,
-                          background: `${getTypeColor(result.object_type)}15`,
-                          color: getTypeColor(result.object_type),
-                          fontWeight: 500,
-                        }}
-                      >
-                        {result.object_type}
-                      </Text>
-                    </div>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                      {result.source_name}.{result.schema_name}
+                <span style={{ fontSize: 16, lineHeight: '20px', flexShrink: 0 }}>
+                  {getObjectIcon(result.object_type)}
+                </span>
+                <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'nowrap' }}>
+                    <Text strong style={{ fontSize: 14 }}>
+                      {result.object_name}
                     </Text>
-                    {result.description && (
-                      <div style={{ marginTop: 2 }}>
-                        <Text
-                          type="secondary"
-                          style={{ fontSize: 12 }}
-                          ellipsis={{ tooltip: result.description }}
-                        >
-                          {result.description.length > 80
-                            ? `${result.description.slice(0, 80)}...`
-                            : result.description}
-                        </Text>
-                      </div>
-                    )}
+                    <Text
+                      style={{
+                        fontSize: 11,
+                        padding: '1px 6px',
+                        borderRadius: 4,
+                        background: `${getTypeColor(result.object_type)}15`,
+                        color: getTypeColor(result.object_type),
+                        fontWeight: 500,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {result.object_type}
+                    </Text>
                   </div>
+                  <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                    {result.source_name}.{result.schema_name}
+                  </Text>
+                  {result.description && (
+                    <Text
+                      type="secondary"
+                      style={{
+                        fontSize: 12,
+                        display: 'block',
+                        marginTop: 2,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title={result.description}
+                    >
+                      {result.description}
+                    </Text>
+                  )}
                 </div>
               </div>
             ))}

@@ -32,35 +32,33 @@ export function ObjectTable({ objects, loading, pagination }: ObjectTableProps) 
       title: 'Name',
       dataIndex: 'object_name',
       key: 'object_name',
-      render: (name: string) => (
-        <Text strong style={{ cursor: 'pointer' }}>
-          {name}
-        </Text>
-      ),
+      width: 1,
+      onCell: () => ({ style: { whiteSpace: 'nowrap', paddingRight: 32 } }),
+      render: (name: string) => <Text strong>{name}</Text>,
     },
     {
       title: 'Schema',
       dataIndex: 'schema_name',
       key: 'schema_name',
+      width: 1,
+      onCell: () => ({ style: { whiteSpace: 'nowrap', paddingRight: 32 } }),
     },
     {
       title: 'Source',
       dataIndex: 'source_name',
       key: 'source_name',
+      width: 1,
+      onCell: () => ({ style: { whiteSpace: 'nowrap', paddingRight: 32 } }),
     },
     {
       title: 'Type',
       dataIndex: 'object_type',
       key: 'object_type',
+      width: 1,
+      onCell: () => ({ style: { whiteSpace: 'nowrap', paddingRight: 32 } }),
       render: (type: string) => (
         <Tag color={objectTypeColors[type] || 'default'}>{type}</Tag>
       ),
-    },
-    {
-      title: 'Columns',
-      dataIndex: 'column_count',
-      key: 'column_count',
-      align: 'right',
     },
     {
       title: 'Description',
@@ -81,6 +79,7 @@ export function ObjectTable({ objects, loading, pagination }: ObjectTableProps) 
       columns={columns}
       rowKey="id"
       loading={loading}
+      tableLayout="auto"
       pagination={pagination ? {
         current: pagination.current,
         pageSize: pagination.pageSize,

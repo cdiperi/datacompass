@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Typography, Select, Space, Alert, Breadcrumb } from 'antd'
+import { Typography, Select, Space, Alert, Breadcrumb, Input } from 'antd'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { HomeOutlined } from '@ant-design/icons'
 import { useObjects } from '../hooks/useObjects'
@@ -21,6 +21,9 @@ export function BrowsePage() {
 
   // Type filter state (not in URL since it's a secondary filter)
   const [typeFilter, setTypeFilter] = useState<string | undefined>(undefined)
+
+  // Search filter state
+  const [searchTerm, setSearchTerm] = useState('')
 
   // Pagination state
   const [page, setPage] = useState(1)
@@ -86,10 +89,22 @@ export function BrowsePage() {
     )
   }
 
+  // Filter objects by search term
+  const filteredObjects = useMemo(() => {
+    if (!objects) return []
+    if (!searchTerm.trim()) return objects
+    const term = searchTerm.toLowerCase()
+    return objects.filter(
+      (o) =>
+        o.object_name.toLowerCase().includes(term) ||
+        o.schema_name.toLowerCase().includes(term) ||
+        o.source_name.toLowerCase().includes(term) ||
+        o.description?.toLowerCase().includes(term)
+    )
+  }, [objects, searchTerm])
+
   // Client-side pagination since we fetch all objects matching filters
-  const paginatedObjects = objects
-    ? objects.slice((page - 1) * pageSize, page * pageSize)
-    : []
+  const paginatedObjects = filteredObjects.slice((page - 1) * pageSize, page * pageSize)
 
   // Build breadcrumb items
   const breadcrumbItems = [
@@ -120,6 +135,16 @@ export function BrowsePage() {
       <Title level={2}>{pageTitle}</Title>
 
       <Space wrap style={{ marginBottom: 16 }}>
+        <Input
+          placeholder="Search..."
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value)
+            setPage(1)
+          }}
+          allowClear
+          style={{ width: 200 }}
+        />
         <Select
           placeholder="Filter by source"
           allowClear
@@ -153,7 +178,7 @@ export function BrowsePage() {
         pagination={{
           current: page,
           pageSize: pageSize,
-          total: objects?.length || 0,
+          total: filteredObjects.length,
           onChange: handlePageChange,
         }}
       />

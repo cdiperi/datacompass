@@ -1,4 +1,4 @@
-import { Layout as AntLayout, Space } from 'antd'
+import { Layout as AntLayout } from 'antd'
 import { Outlet, useLocation } from 'react-router-dom'
 import { CollapsibleSidebar } from './CollapsibleSidebar'
 import { SearchBar } from './SearchBar'
@@ -41,10 +41,18 @@ export function Layout() {
               zIndex: 10,
             }}
           >
-            <Space size="middle">
-              <SearchBar />
-              <UserMenu />
-            </Space>
+            {/* Centered search bar using absolute positioning */}
+            <div
+              style={{
+                position: 'absolute',
+                left: '50%',
+                transform: 'translateX(-50%)',
+              }}
+            >
+              <SearchBar width={450} />
+            </div>
+            {/* Right-aligned user menu */}
+            <UserMenu />
           </Header>
         )}
         <Content
