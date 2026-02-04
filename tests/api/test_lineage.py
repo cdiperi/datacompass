@@ -324,3 +324,36 @@ class TestLineageWithDependencies:
 
         assert data["upstream_count"] == 1
         assert data["downstream_count"] == 1
+
+    def test_both_lineage_with_deps(self, client_with_dependencies: TestClient):
+        """Test both direction lineage returns upstream and downstream."""
+        object_ids = client_with_dependencies.object_ids
+
+        response = client_with_dependencies.get(
+            f"/api/v1/objects/{object_ids['orders']}/lineage",
+            params={"direction": "both", "depth": 1},
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        # orders: upstream raw_events, downstream order_summary
+        assert data["root"]["object_name"] == "orders"
+        assert data["direction"] == "both"
+        assert len(data["nodes"]) == 2
+
+        names = {n["object_name"] for n in data["nodes"]}
+        assert names == {"raw_events", "order_summary"}
+
+    def test_both_lineage_default(self, client_with_dependencies: TestClient):
+        """Test that 'both' is the default direction."""
+        object_ids = client_with_dependencies.object_ids
+
+        # Call without direction parameter
+        response = client_with_dependencies.get(
+            f"/api/v1/objects/{object_ids['orders']}/lineage",
+        )
+        assert response.status_code == 200
+        data = response.json()
+
+        # Should default to "both"
+        assert data["direction"] == "both"

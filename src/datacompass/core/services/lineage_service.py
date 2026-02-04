@@ -46,14 +46,15 @@ class LineageService:
     def get_lineage(
         self,
         object_id: int,
-        direction: Literal["upstream", "downstream"] = "upstream",
+        direction: Literal["upstream", "downstream", "both"] = "upstream",
         depth: int = 3,
     ) -> LineageGraph:
         """Build lineage graph for an object using BFS traversal.
 
         Args:
             object_id: ID of the root object.
-            direction: "upstream" for dependencies, "downstream" for dependents.
+            direction: "upstream" for dependencies, "downstream" for dependents,
+                       or "both" for combined view.
             depth: Maximum traversal depth (1-10).
 
         Returns:
@@ -86,94 +87,123 @@ class LineageService:
         edges: list[LineageEdge] = []
         truncated = False
 
-        # BFS traversal
-        queue: deque[tuple[int, int]] = deque([(object_id, 0)])  # (obj_id, distance)
+        # Determine which directions to traverse
+        directions_to_traverse: list[Literal["upstream", "downstream"]] = (
+            ["upstream", "downstream"] if direction == "both" else [direction]
+        )
 
-        while queue:
-            current_id, current_distance = queue.popleft()
+        for traverse_direction in directions_to_traverse:
+            # BFS traversal - use separate visited set per direction for nodes,
+            # but share edges to avoid duplicates
+            direction_visited: set[int] = {object_id}
+            queue: deque[tuple[int, int]] = deque([(object_id, 0)])  # (obj_id, distance)
 
-            # Stop if we've reached max depth
-            if current_distance >= depth:
-                truncated = True
-                continue
+            while queue:
+                current_id, current_distance = queue.popleft()
 
-            # Get dependencies based on direction
-            if direction == "upstream":
-                deps = self.dependency_repo.get_upstream(current_id)
-                for dep in deps:
-                    if dep.target_id is not None:
-                        # Internal dependency
-                        if dep.target_id not in visited:
-                            visited.add(dep.target_id)
-                            target_obj = self.object_repo.get_with_source(dep.target_id)
-                            if target_obj:
-                                node = LineageNode(
-                                    id=target_obj.id,
-                                    source_name=target_obj.source.name,
-                                    schema_name=target_obj.schema_name,
-                                    object_name=target_obj.object_name,
-                                    object_type=target_obj.object_type,
-                                    distance=current_distance + 1,
-                                )
-                                nodes.append(node)
-                                queue.append((dep.target_id, current_distance + 1))
+                # Stop if we've reached max depth
+                if current_distance >= depth:
+                    truncated = True
+                    continue
 
-                        edges.append(
-                            LineageEdge(
+                # Get dependencies based on direction
+                if traverse_direction == "upstream":
+                    deps = self.dependency_repo.get_upstream(current_id)
+                    for dep in deps:
+                        if dep.target_id is not None:
+                            # Internal dependency
+                            if dep.target_id not in direction_visited:
+                                direction_visited.add(dep.target_id)
+                                target_obj = self.object_repo.get_with_source(dep.target_id)
+                                if target_obj:
+                                    # Only add node if not already in global visited
+                                    if dep.target_id not in visited:
+                                        visited.add(dep.target_id)
+                                        node = LineageNode(
+                                            id=target_obj.id,
+                                            source_name=target_obj.source.name,
+                                            schema_name=target_obj.schema_name,
+                                            object_name=target_obj.object_name,
+                                            object_type=target_obj.object_type,
+                                            distance=current_distance + 1,
+                                        )
+                                        nodes.append(node)
+                                    queue.append((dep.target_id, current_distance + 1))
+
+                            # Check for duplicate edges
+                            edge = LineageEdge(
                                 from_id=current_id,
                                 to_id=dep.target_id,
                                 dependency_type=dep.dependency_type,
                                 confidence=dep.confidence,
                             )
-                        )
-                    elif dep.target_external:
-                        # External dependency
-                        external_nodes.append(
-                            ExternalNode(
-                                schema_name=dep.target_external.get("schema"),
-                                object_name=dep.target_external.get(
-                                    "name", "unknown"
-                                ),
-                                object_type=dep.target_external.get("type"),
-                                distance=current_distance + 1,
+                            if not any(
+                                e.from_id == edge.from_id and e.to_id == edge.to_id for e in edges
+                            ):
+                                edges.append(edge)
+                        elif dep.target_external:
+                            # External dependency
+                            ext_key = (
+                                dep.target_external.get("schema"),
+                                dep.target_external.get("name", "unknown"),
                             )
-                        )
-                        edges.append(
-                            LineageEdge(
+                            # Check if we already have this external node
+                            if not any(
+                                (e.schema_name, e.object_name) == ext_key for e in external_nodes
+                            ):
+                                external_nodes.append(
+                                    ExternalNode(
+                                        schema_name=dep.target_external.get("schema"),
+                                        object_name=dep.target_external.get("name", "unknown"),
+                                        object_type=dep.target_external.get("type"),
+                                        distance=current_distance + 1,
+                                    )
+                                )
+                            edge = LineageEdge(
                                 from_id=current_id,
                                 to_id=None,
                                 to_external=dep.target_external,
                                 dependency_type=dep.dependency_type,
                                 confidence=dep.confidence,
                             )
-                        )
-            else:
-                # downstream - get objects that depend on this one
-                deps = self.dependency_repo.get_downstream(current_id)
-                for dep in deps:
-                    if dep.object_id not in visited:
-                        visited.add(dep.object_id)
-                        dependent_obj = self.object_repo.get_with_source(dep.object_id)
-                        if dependent_obj:
-                            node = LineageNode(
-                                id=dependent_obj.id,
-                                source_name=dependent_obj.source.name,
-                                schema_name=dependent_obj.schema_name,
-                                object_name=dependent_obj.object_name,
-                                object_type=dependent_obj.object_type,
-                                distance=current_distance + 1,
-                            )
-                            nodes.append(node)
-                            queue.append((dep.object_id, current_distance + 1))
+                            if not any(
+                                e.from_id == edge.from_id and e.to_external == edge.to_external
+                                for e in edges
+                            ):
+                                edges.append(edge)
+                else:
+                    # downstream - get objects that depend on this one
+                    deps = self.dependency_repo.get_downstream(current_id)
+                    for dep in deps:
+                        if dep.object_id not in direction_visited:
+                            direction_visited.add(dep.object_id)
+                            dependent_obj = self.object_repo.get_with_source(dep.object_id)
+                            if dependent_obj:
+                                # Only add node if not already in global visited
+                                if dep.object_id not in visited:
+                                    visited.add(dep.object_id)
+                                    node = LineageNode(
+                                        id=dependent_obj.id,
+                                        source_name=dependent_obj.source.name,
+                                        schema_name=dependent_obj.schema_name,
+                                        object_name=dependent_obj.object_name,
+                                        object_type=dependent_obj.object_type,
+                                        distance=current_distance + 1,
+                                    )
+                                    nodes.append(node)
+                                queue.append((dep.object_id, current_distance + 1))
 
-                    edges.append(
-                        LineageEdge(
+                        # Check for duplicate edges
+                        edge = LineageEdge(
                             from_id=dep.object_id,
                             to_id=current_id,
                             dependency_type=dep.dependency_type,
                             confidence=dep.confidence,
                         )
-                    )
+                        if not any(
+                            e.from_id == edge.from_id and e.to_id == edge.to_id for e in edges
+                        ):
+                            edges.append(edge)
 
         return LineageGraph(
             root=root_node,

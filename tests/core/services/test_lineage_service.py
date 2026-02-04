@@ -191,6 +191,57 @@ class TestLineageService:
         assert "order_summary" in by_distance[1]
         assert "daily_report" in by_distance[2]
 
+    def test_get_lineage_both(
+        self,
+        test_db: Session,
+        source: DataSource,
+        objects: dict[str, CatalogObject],
+        dependencies,
+    ):
+        """Test getting both upstream and downstream lineage."""
+        service = LineageService(test_db)
+
+        # Get both directions from order_summary with depth 1
+        # Upstream: orders, users
+        # Downstream: daily_report
+        graph = service.get_lineage(
+            objects["order_summary"].id, direction="both", depth=1
+        )
+
+        assert graph.root.id == objects["order_summary"].id
+        assert graph.direction == "both"
+        assert len(graph.nodes) == 3
+
+        node_names = {n.object_name for n in graph.nodes}
+        assert node_names == {"orders", "users", "daily_report"}
+
+        # All nodes should be at distance 1
+        for node in graph.nodes:
+            assert node.distance == 1
+
+    def test_get_lineage_both_no_duplicates(
+        self,
+        test_db: Session,
+        source: DataSource,
+        objects: dict[str, CatalogObject],
+        dependencies,
+    ):
+        """Test that 'both' direction doesn't create duplicate nodes or edges."""
+        service = LineageService(test_db)
+
+        # orders: upstream raw_events, downstream order_summary
+        graph = service.get_lineage(objects["orders"].id, direction="both", depth=2)
+
+        assert graph.root.id == objects["orders"].id
+
+        # Should not have duplicate nodes
+        node_ids = [n.id for n in graph.nodes]
+        assert len(node_ids) == len(set(node_ids))
+
+        # Should not have duplicate edges
+        edge_keys = [(e.from_id, e.to_id) for e in graph.edges]
+        assert len(edge_keys) == len(set(edge_keys))
+
     def test_get_lineage_truncated(
         self,
         test_db: Session,

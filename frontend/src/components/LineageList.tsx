@@ -34,7 +34,7 @@ type LineageItem = (LineageNode | ExternalNode) & { isExternal?: boolean }
 type ViewMode = 'table' | 'graph'
 
 export function LineageList({ objectId }: LineageListProps) {
-  const [direction, setDirection] = useState<'upstream' | 'downstream'>('upstream')
+  const [direction, setDirection] = useState<'upstream' | 'downstream' | 'both'>('both')
   const [depth, setDepth] = useState(3)
   const [viewMode, setViewMode] = useState<ViewMode>('graph')
 
@@ -110,8 +110,9 @@ export function LineageList({ objectId }: LineageListProps) {
           optionType="button"
           buttonStyle="solid"
           options={[
-            { label: 'Upstream (Dependencies)', value: 'upstream' },
-            { label: 'Downstream (Dependents)', value: 'downstream' },
+            { label: 'All', value: 'both' },
+            { label: 'Upstream', value: 'upstream' },
+            { label: 'Downstream', value: 'downstream' },
           ]}
         />
         <Space>
@@ -152,9 +153,11 @@ export function LineageList({ objectId }: LineageListProps) {
       ) : !hasData ? (
         <Empty
           description={
-            direction === 'upstream'
-              ? 'No upstream dependencies found'
-              : 'No downstream dependents found'
+            direction === 'both'
+              ? 'No lineage found'
+              : direction === 'upstream'
+                ? 'No upstream dependencies found'
+                : 'No downstream dependents found'
           }
         />
       ) : viewMode === 'graph' ? (

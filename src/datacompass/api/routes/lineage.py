@@ -15,9 +15,9 @@ async def get_lineage(
     object_id: str,
     catalog_service: CatalogServiceDep,
     lineage_service: LineageServiceDep,
-    direction: Literal["upstream", "downstream"] = Query(
-        "upstream",
-        description="Traversal direction: upstream (dependencies) or downstream (dependents)",
+    direction: Literal["upstream", "downstream", "both"] = Query(
+        "both",
+        description="Traversal direction: upstream (dependencies), downstream (dependents), or both",
     ),
     depth: int = Query(
         3,

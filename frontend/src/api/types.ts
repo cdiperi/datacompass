@@ -163,7 +163,7 @@ export interface LineageSummary {
 }
 
 export interface LineageFilters {
-  direction?: 'upstream' | 'downstream'
+  direction?: 'upstream' | 'downstream' | 'both'
   depth?: number
 }
 
