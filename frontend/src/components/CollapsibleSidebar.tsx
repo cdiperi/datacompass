@@ -6,17 +6,19 @@ import {
   MenuUnfoldOutlined,
   SafetyCertificateOutlined,
   ScheduleOutlined,
+  SettingOutlined,
   TableOutlined,
 } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useSidebar } from '../hooks/useSidebar'
+import { useTheme } from '../hooks/useTheme'
 
 const { Sider } = Layout
 
 const COLLAPSED_WIDTH = 60
 const EXPANDED_WIDTH = 220
 
-const menuItems = [
+const mainMenuItems = [
   {
     key: '/',
     icon: <HomeOutlined />,
@@ -44,10 +46,19 @@ const menuItems = [
   },
 ]
 
+const bottomMenuItems = [
+  {
+    key: '/settings',
+    icon: <SettingOutlined />,
+    label: 'Settings',
+  },
+]
+
 export function CollapsibleSidebar() {
   const navigate = useNavigate()
   const location = useLocation()
   const { collapsed, toggleCollapsed } = useSidebar()
+  const { mode } = useTheme()
 
   const handleMenuClick = ({ key }: { key: string }) => {
     navigate(key)
@@ -60,29 +71,36 @@ export function CollapsibleSidebar() {
     if (location.pathname.startsWith('/dq')) return '/dq'
     if (location.pathname.startsWith('/deprecation')) return '/deprecation'
     if (location.pathname.startsWith('/scheduler')) return '/scheduler'
+    if (location.pathname.startsWith('/settings')) return '/settings'
     return location.pathname
   }
 
+  const borderColor = mode === 'dark' ? '#303030' : '#f0f0f0'
+
   // Build menu items with tooltips when collapsed
-  const menuItemsWithTooltips = menuItems.map((item) => ({
-    ...item,
-    label: collapsed ? (
-      <Tooltip title={item.label} placement="right">
-        <span>{item.label}</span>
-      </Tooltip>
-    ) : (
-      item.label
-    ),
-  }))
+  const addTooltips = (items: typeof mainMenuItems) =>
+    items.map((item) => ({
+      ...item,
+      label: collapsed ? (
+        <Tooltip title={item.label} placement="right">
+          <span>{item.label}</span>
+        </Tooltip>
+      ) : (
+        item.label
+      ),
+    }))
+
+  const mainMenuItemsWithTooltips = addTooltips(mainMenuItems)
+  const bottomMenuItemsWithTooltips = addTooltips(bottomMenuItems)
 
   return (
     <Sider
-      theme="light"
+      theme={mode === 'dark' ? 'dark' : 'light'}
       width={EXPANDED_WIDTH}
       collapsedWidth={COLLAPSED_WIDTH}
       collapsed={collapsed}
       style={{
-        borderRight: '1px solid #f0f0f0',
+        borderRight: `1px solid ${borderColor}`,
         overflow: 'auto',
         height: '100vh',
         position: 'fixed',
@@ -90,6 +108,8 @@ export function CollapsibleSidebar() {
         top: 0,
         bottom: 0,
         zIndex: 100,
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       {/* Toggle button row */}
@@ -100,7 +120,7 @@ export function CollapsibleSidebar() {
           alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'flex-start',
           padding: collapsed ? 0 : '0 16px',
-          borderBottom: '1px solid #f0f0f0',
+          borderBottom: `1px solid ${borderColor}`,
           cursor: 'pointer',
         }}
         onClick={toggleCollapsed}
@@ -117,15 +137,27 @@ export function CollapsibleSidebar() {
         )}
       </div>
 
-      {/* Navigation menu */}
+      {/* Main navigation menu */}
       <Menu
         mode="inline"
         selectedKeys={[getSelectedKey()]}
-        items={menuItemsWithTooltips}
+        items={mainMenuItemsWithTooltips}
         onClick={handleMenuClick}
-        style={{ borderRight: 0 }}
+        style={{ borderRight: 0, flex: 1 }}
         inlineCollapsed={collapsed}
       />
+
+      {/* Bottom menu with divider */}
+      <div style={{ borderTop: `1px solid ${borderColor}` }}>
+        <Menu
+          mode="inline"
+          selectedKeys={[getSelectedKey()]}
+          items={bottomMenuItemsWithTooltips}
+          onClick={handleMenuClick}
+          style={{ borderRight: 0 }}
+          inlineCollapsed={collapsed}
+        />
+      </div>
     </Sider>
   )
 }

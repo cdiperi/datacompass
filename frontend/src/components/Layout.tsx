@@ -1,4 +1,4 @@
-import { Layout as AntLayout } from 'antd'
+import { Layout as AntLayout, theme } from 'antd'
 import { Outlet, useLocation } from 'react-router-dom'
 import { CollapsibleSidebar } from './CollapsibleSidebar'
 import { SearchBar } from './SearchBar'
@@ -6,6 +6,7 @@ import { UserMenu } from './UserMenu'
 import { useSidebar } from '../hooks/useSidebar'
 
 const { Header, Content } = AntLayout
+const { useToken } = theme
 
 const COLLAPSED_WIDTH = 60
 const EXPANDED_WIDTH = 220
@@ -14,6 +15,7 @@ export function Layout() {
   const { collapsed } = useSidebar()
   const location = useLocation()
   const isHomePage = location.pathname === '/'
+  const { token } = useToken()
 
   const sidebarWidth = collapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH
 
@@ -30,12 +32,12 @@ export function Layout() {
         {!isHomePage && (
           <Header
             style={{
-              background: '#fff',
+              background: token.colorBgContainer,
               padding: '0 24px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'flex-end',
-              borderBottom: '1px solid #f0f0f0',
+              borderBottom: `1px solid ${token.colorBorderSecondary}`,
               position: 'sticky',
               top: 0,
               zIndex: 10,
@@ -59,7 +61,7 @@ export function Layout() {
           style={{
             margin: isHomePage ? 0 : 24,
             padding: isHomePage ? 0 : 24,
-            background: isHomePage ? '#fafafa' : '#fff',
+            background: isHomePage ? token.colorBgLayout : token.colorBgContainer,
             minHeight: isHomePage ? 'calc(100vh - 0px)' : 280,
           }}
         >
