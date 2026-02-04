@@ -378,6 +378,18 @@ See what objects depend on a given object:
 datacompass lineage prod.core.customers --direction downstream
 ```
 
+### Viewing Both Directions
+
+See the complete lineage picture - both dependencies and dependents:
+
+```bash
+# View upstream and downstream together
+datacompass lineage prod.core.customers --direction both
+
+# Tree format shows both directions as labeled subtrees
+datacompass lineage prod.core.customers --direction both --format tree
+```
+
 ### Controlling Depth
 
 Limit how far to traverse the dependency graph:

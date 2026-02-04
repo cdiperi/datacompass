@@ -432,7 +432,7 @@ datacompass lineage <object_id> [options]
 
 | Option | Short | Description |
 |--------|-------|-------------|
-| `--direction` | `-d` | Traversal direction: `upstream` (default) or `downstream` |
+| `--direction` | `-d` | Traversal direction: `upstream` (default), `downstream`, or `both` |
 | `--depth` | | Maximum traversal depth (1-10, default: 3) |
 | `--format` | `-f` | Output format: `json`, `table`, or `tree` |
 
@@ -444,6 +444,9 @@ datacompass lineage prod.analytics.daily_sales
 
 # View downstream impact
 datacompass lineage prod.core.customers --direction downstream
+
+# View both upstream and downstream
+datacompass lineage prod.core.customers --direction both
 
 # Deep traversal with tree view
 datacompass lineage prod.analytics.revenue --depth 5 --format tree

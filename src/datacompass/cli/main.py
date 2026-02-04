@@ -85,6 +85,7 @@ class LineageDirection(str, Enum):
 
     upstream = "upstream"
     downstream = "downstream"
+    both = "both"
 
 
 # Main app
@@ -672,7 +673,12 @@ def search_reindex(
 def _format_lineage_table(graph: LineageGraph, direction: str) -> None:
     """Format lineage as a table."""
 
-    direction_label = "UPSTREAM DEPENDENCIES" if direction == "upstream" else "DOWNSTREAM DEPENDENTS"
+    direction_labels = {
+        "upstream": "UPSTREAM DEPENDENCIES",
+        "downstream": "DOWNSTREAM DEPENDENTS",
+        "both": "LINEAGE (UPSTREAM & DOWNSTREAM)",
+    }
+    direction_label = direction_labels.get(direction, "LINEAGE")
     console.print(f"\n[bold]{direction_label} FOR[/bold] {graph.root.full_name}\n")
 
     if not graph.nodes and not graph.external_nodes:
@@ -715,33 +721,36 @@ def _format_lineage_table(graph: LineageGraph, direction: str) -> None:
 
 def _format_lineage_tree(graph: LineageGraph, direction: str) -> None:
     """Format lineage as a tree."""
-    # Build adjacency list
-    if direction == "upstream":
-        # from_id -> list of to_ids
-        adj: dict[int, list[tuple[int | None, dict | None]]] = {}
-        for edge in graph.edges:
-            if edge.from_id not in adj:
-                adj[edge.from_id] = []
-            adj[edge.from_id].append((edge.to_id, edge.to_external))
-    else:
-        # to_id -> list of from_ids
-        adj = {}
-        for edge in graph.edges:
-            if edge.to_id is not None:
-                if edge.to_id not in adj:
-                    adj[edge.to_id] = []
-                adj[edge.to_id].append((edge.from_id, None))
-
     # Build node lookup
     node_lookup = {graph.root.id: graph.root}
     for node in graph.nodes:
         node_lookup[node.id] = node
 
-    # Build tree recursively
-    root_label = f"[bold]{graph.root.full_name}[/bold] ({graph.root.object_type})"
-    tree = Tree(root_label)
+    def build_adj_upstream() -> dict[int, list[tuple[int | None, dict | None]]]:
+        """Build adjacency list for upstream (from_id -> to_ids)."""
+        adj: dict[int, list[tuple[int | None, dict | None]]] = {}
+        for edge in graph.edges:
+            if edge.from_id not in adj:
+                adj[edge.from_id] = []
+            adj[edge.from_id].append((edge.to_id, edge.to_external))
+        return adj
 
-    def add_children(parent_tree: Tree, node_id: int, visited: set[int]) -> None:
+    def build_adj_downstream() -> dict[int, list[tuple[int | None, dict | None]]]:
+        """Build adjacency list for downstream (to_id -> from_ids)."""
+        adj: dict[int, list[tuple[int | None, dict | None]]] = {}
+        for edge in graph.edges:
+            if edge.to_id is not None:
+                if edge.to_id not in adj:
+                    adj[edge.to_id] = []
+                adj[edge.to_id].append((edge.from_id, None))
+        return adj
+
+    def add_children(
+        parent_tree: Tree,
+        node_id: int,
+        visited: set[int],
+        adj: dict[int, list[tuple[int | None, dict | None]]],
+    ) -> None:
         if node_id in visited:
             return
         visited.add(node_id)
@@ -752,12 +761,32 @@ def _format_lineage_tree(graph: LineageGraph, direction: str) -> None:
                 child_node = node_lookup[child_id]
                 label = f"{child_node.full_name} ({child_node.object_type})"
                 child_tree = parent_tree.add(label)
-                add_children(child_tree, child_id, visited.copy())
+                add_children(child_tree, child_id, visited.copy(), adj)
             elif external:
                 ext_name = f"{external.get('schema', '?')}.{external.get('name', '?')}"
                 parent_tree.add(f"[dim]{ext_name} (external)[/dim]")
 
-    add_children(tree, graph.root.id, set())
+    # Build tree recursively
+    root_label = f"[bold]{graph.root.full_name}[/bold] ({graph.root.object_type})"
+    tree = Tree(root_label)
+
+    if direction == "both":
+        # Show upstream and downstream as separate subtrees
+        upstream_adj = build_adj_upstream()
+        downstream_adj = build_adj_downstream()
+
+        upstream_subtree = tree.add("[cyan]Upstream (dependencies)[/cyan]")
+        add_children(upstream_subtree, graph.root.id, set(), upstream_adj)
+
+        downstream_subtree = tree.add("[magenta]Downstream (dependents)[/magenta]")
+        add_children(downstream_subtree, graph.root.id, set(), downstream_adj)
+    elif direction == "upstream":
+        adj = build_adj_upstream()
+        add_children(tree, graph.root.id, set(), adj)
+    else:
+        adj = build_adj_downstream()
+        add_children(tree, graph.root.id, set(), adj)
+
     console.print(tree)
 
     if graph.truncated:
